@@ -1,0 +1,7 @@
+
+*.ipch
+.vs
+3rd
+x64
+*.log
+*.obj
