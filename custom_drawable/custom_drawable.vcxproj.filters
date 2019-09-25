@@ -26,10 +26,10 @@
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="custom_drawable.cpp">
+    <ClCompile Include="CustomDrawable.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="CustomDrawable.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
