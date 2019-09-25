@@ -58,7 +58,6 @@ osg::BoundingBox CustomDrawable::computeBoundingBox() const
 
 void CustomDrawable::complie(osg::RenderInfo& info) const
 {
-
 	if (!dirty_) return;
 	dirty_ = false;
 
