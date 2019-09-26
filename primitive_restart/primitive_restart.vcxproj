@@ -166,8 +166,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="line_stripe.frag" />
-    <None Include="line_stripe.vert" />
+    <None Include="..\shader\line_stripe.frag" />
+    <None Include="..\shader\line_stripe.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

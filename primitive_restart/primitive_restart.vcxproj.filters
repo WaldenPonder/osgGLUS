@@ -28,11 +28,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="line_stripe.frag">
-      <Filter>源文件</Filter>
+    <None Include="..\shader\line_stripe.vert">
+      <Filter>资源文件</Filter>
     </None>
-    <None Include="line_stripe.vert">
-      <Filter>源文件</Filter>
+    <None Include="..\shader\line_stripe.frag">
+      <Filter>资源文件</Filter>
     </None>
   </ItemGroup>
 </Project>

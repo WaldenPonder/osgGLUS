@@ -28,6 +28,9 @@ const char* frag_src =
 
 void CustomDrawable::drawImplementation(osg::RenderInfo& info) const
 {
+	const char* version = (const char*)glGetString(GL_VERSION);
+	cout << "AAA " << version << endl;
+
 	osg::GLExtensions& ext = *info.getState()->get<osg::GLExtensions>();
 
 	complie(info);

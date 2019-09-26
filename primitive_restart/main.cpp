@@ -168,8 +168,6 @@ int main()
 	//osg::DisplaySettings::instance()->setShaderHint(osg::DisplaySettings::SHADER_GL3);
 
 	view.realize();
-	//view.getCamera()->getGraphicsContext()->getState()->setUseModelViewAndProjectionUniforms(true);
- //   view.getCamera()->getGraphicsContext()->getState()->setUseVertexAttributeAliasing(true);
 	return view.run();
 }
 

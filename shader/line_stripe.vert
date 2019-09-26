@@ -12,5 +12,6 @@ void main()
 {
    v_index_start = a_index[0];
    v_index_end = a_index[1];
+   
    gl_Position = u_MVP * vec4(a_pos,1.0);
 }
