@@ -30,5 +30,6 @@ using namespace std;
 #include <osg/KdTree>
 
 
+#define  SOLUTION_DIR std::string("D:\\GraphProject\\osgGLUS\\")
 
 #include "event_handler.inc"
