@@ -155,11 +155,13 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 
 int main()
 {
+	osg::Node* n;
+	
 	osgViewer::Viewer view;
 
 	osg::Group* root = new osg::Group;
-
-	root->addChild(create_lines(view));
+	//root->addChild(osgDB::readNodeFile("cow.osg"));
+	//root->addChild(create_lines(view));
 
 	view.setSceneData(root);
 	add_event_handler(view);
