@@ -161,7 +161,7 @@ int main()
 
 	osg::Group* root = new osg::Group;
 	//root->addChild(osgDB::readNodeFile("cow.osg"));
-	//root->addChild(create_lines(view));
+	root->addChild(create_lines(view));
 
 	view.setSceneData(root);
 	add_event_handler(view);
