@@ -30,10 +30,24 @@ using namespace std;
 #include <osg/KdTree>
 #include <osg/Point>
 
-#define  SOLUTION_DIR std::string("D:\\GraphProject\\osgGLUS\\")
-
 #include "event_handler.inc"
 
+#include <stdio.h>
+#include <io.h>
+
+string shader_dir()
+{
+	if (!access("../shader", 0))
+	{
+		return "../shader";
+	}
+	else if (!access("../../shader", 0))
+	{
+		return "../../shader";
+	}
+
+	return "";
+}
 
 void configureShaders(osg::StateSet* stateSet)
 {

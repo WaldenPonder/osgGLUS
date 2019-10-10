@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include "../common/common.h"
+
 //------------------------------------------------------------------------------------------
 
 class UpdateSelecteUniform : public osg::Uniform::Callback
@@ -99,8 +100,8 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 colo
 	//------------------------osg::Program-----------------------------
 	osg::Program* program = new osg::Program;
 	program->setName("LINESTRIPE");
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, SOLUTION_DIR + "shader/line_stripe.vert"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, SOLUTION_DIR + "shader/line_stripe.frag"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_stripe.vert"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_stripe.frag"));
 
 	stateset->setAttributeAndModes(program, osg::StateAttribute::ON);
 
