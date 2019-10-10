@@ -10,7 +10,6 @@ int main()
 	osgViewer::Viewer view;
 
 	osg::Group* root = new osg::Group;
-	//root->addChild(osgDB::readNodeFile("cow.osg"));
 
 	osg::Geode* geo = new osg::Geode;
 	root->addChild(geo);
@@ -39,6 +38,8 @@ int main()
 	osg::Camera* cam = view.getCamera();
 	cam->setGraphicsContext(gc.get());
 	cam->setViewport(new osg::Viewport(0, 0, width, height));
+
+
 	return view.run();
 }
 

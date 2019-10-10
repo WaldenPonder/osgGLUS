@@ -6,7 +6,7 @@
 class CustomDrawable : public osg::Drawable
 {
 public:
-	CustomDrawable() { }
+	CustomDrawable();
 	CustomDrawable(const CustomDrawable& drawable, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
 		: osg::Drawable(drawable, copyop)
 	{

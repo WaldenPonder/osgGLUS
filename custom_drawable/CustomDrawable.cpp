@@ -26,6 +26,14 @@ const char* frag_src =
 	"FragColor = vec4(color, 1);\n"
 "}";
 
+CustomDrawable::CustomDrawable()
+{
+	arr_ = new osg::Vec3Array;
+	arr_->push_back(osg::Vec3(0.5f, 0.5f, 0.0f));    arr_->push_back(osg::Vec3(1, 0, 0));
+	arr_->push_back(osg::Vec3(0.5f, -0.5f, 0.0f));   arr_->push_back(osg::Vec3(0, 1, 0));
+	arr_->push_back(osg::Vec3(-0.5f, -0.5f, 0.0f));  arr_->push_back(osg::Vec3(0, 0, 1));
+}
+
 void CustomDrawable::drawImplementation(osg::RenderInfo& info) const
 {
 	const char* version = (const char*)glGetString(GL_VERSION);
@@ -70,11 +78,6 @@ void CustomDrawable::complie(osg::RenderInfo& info) const
 	dirty_ = false;
 
 	osg::GLExtensions& ext =  *info.getState()->get<osg::GLExtensions>();
-
-	arr_ = new osg::Vec3Array;
-	arr_->push_back(osg::Vec3(0.5f, 0.5f, 0.0f));    arr_->push_back(osg::Vec3(1, 0, 0));
-	arr_->push_back(osg::Vec3(0.5f, -0.5f, 0.0f));   arr_->push_back(osg::Vec3(0, 1, 0));
-	arr_->push_back(osg::Vec3(-0.5f, -0.5f, 0.0f));  arr_->push_back(osg::Vec3(0, 0, 1));
 
 	//---------------shader-----------------------------------
 	int vert_shader = ext.glCreateShader(GL_VERTEX_SHADER);
