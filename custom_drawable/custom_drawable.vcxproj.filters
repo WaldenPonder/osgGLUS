@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
+    <ClInclude Include="CustomDrawable.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="CustomDrawable.h">
+    <ClInclude Include="stdafx.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -30,9 +30,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="outline.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

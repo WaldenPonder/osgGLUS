@@ -1,4 +1,4 @@
-#include "pch.h"
+#include "stdafx.h"
 #include "CustomDrawable.h"
 #include <osg/GLExtensions>
 #include <iostream>
