@@ -137,6 +137,12 @@ int main(int argc, char **argv) {
 	  texture2D->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
 	  texture2D->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 
+	  {
+		  texture2D->setInternalFormat(GL_RGBA16F_ARB);
+		  texture2D->setSourceFormat(GL_RGBA);
+		  texture2D->setSourceType(GL_FLOAT);
+	  }
+
 	  osg::StateSet* stateset = geode->getOrCreateStateSet();
 
 	  stateset->setTextureAttributeAndModes(0, texture2D, osg::StateAttribute::ON);
@@ -177,7 +183,7 @@ int main(int argc, char **argv) {
 	//  camera->setViewMatrixAsLookAt(bs.center() - osg::Vec3(0.0f, 2.0f, 0.0f)*bs.radius(), bs.center(), osg::Vec3(0.0f, 0.0f, 1.0f));
 
 	  // set viewport
-	  camera->setViewport(0, 0, 1, 1);
+	  camera->setViewport(0, 0, 512, 512);
 
 	  // set the camera to render before the main camera.
 	  camera->setRenderOrder(osg::Camera::PRE_RENDER);
