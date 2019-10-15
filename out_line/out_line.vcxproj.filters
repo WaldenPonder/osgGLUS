@@ -29,6 +29,9 @@
     <None Include="..\shader\line_stripe.frag">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="out_line_test.inc">
+      <Filter>头文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

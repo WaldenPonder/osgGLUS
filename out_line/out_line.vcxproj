@@ -168,6 +168,7 @@
   <ItemGroup>
     <None Include="..\shader\line_stripe.frag" />
     <None Include="..\shader\line_stripe.vert" />
+    <None Include="out_line_test.inc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
