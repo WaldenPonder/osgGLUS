@@ -10,14 +10,16 @@
 #include <osgViewer/Viewer>
 #include <sstream>
 
-#define PING_PONG_NUM 10
+#define PING_PONG_NUM 1
 
 osg::Camera*	g_hudCamera  = new osg::Camera;
 osg::Group*		g_root		 = new osg::Group;
 osg::Camera*	g_first_fbo  = new osg::Camera;
 osg::Group*		g_modelGroup = new osg::Group;
-osg::Camera*	g_pingpong_fbo[PING_PONG_NUM];
+osg::Camera*	g_pingpong_fbo[PING_PONG_NUM] = {nullptr};
 osg::Texture2D* g_pingpong_texture[PING_PONG_NUM];
+osg::Texture2D* g_first_texture = new osg::Texture2D;
+
 
 osg::Geometry* g_screenQuat = nullptr;
 
@@ -56,17 +58,17 @@ class PickHandler : public osgGA::GUIEventHandler
 		fbo_camera->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
 		fbo_camera->setViewMatrix(view->getCamera()->getViewMatrix());
 
+		for (int i = 0; i < PING_PONG_NUM; i++)
+		{
+			if(!g_pingpong_fbo[i]) continue;
+			g_pingpong_fbo[i]->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
+			g_pingpong_fbo[i]->setViewMatrix(view->getCamera()->getViewMatrix());
+		}
+		
 		switch (ea.getEventType())
 		{
 		case (osgGA::GUIEventAdapter::FRAME):
 		{
-			//if (screenQuat)
-			//{
-			//	screenQuat->dirtyGLObjects();
-			//}
-
-			//fbo_camera->setViewport(view->getCamera()->getViewport());
-			break;
 		}
 		case (osgGA::GUIEventAdapter::KEYDOWN):
 		{
@@ -95,6 +97,11 @@ void set_pingpong_texture()
 		texture2D->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
 		texture2D->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 	}
+		
+	g_first_texture->setTextureSize(1024, 1024);
+	g_first_texture->setInternalFormat(GL_RGBA);
+	g_first_texture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+	g_first_texture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 }
 
 void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
@@ -107,19 +114,20 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 		osg::Geometry* screenQuat = osg::createTexturedQuadGeometry(
 			osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 		{
-			fbo->setClearColor(osg::Vec4());
 			fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-			fbo->setProjectionMatrixAsOrtho2D(0, w, 0, h);
-			fbo->setViewMatrix(osg::Matrix::identity());
+			fbo->setClearColor(osg::Vec4());
+			
+			//fbo->setProjectionMatrixAsOrtho2D(0, w, 0, h);
+			//fbo->setViewMatrix(osg::Matrix::identity());
 			fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 			fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			fbo->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 			fbo->setViewport(0, 0, 1024, 1024);
 			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[(i + 1) % PING_PONG_NUM],
+			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[/*(i + 1) % PING_PONG_NUM*/0],
 						0, 0, false,
 						4, 4);
-
+			
 			osg::Geode* geode = new osg::Geode;
 			fbo->addChild(geode);
 			geode->addChild(screenQuat);
@@ -132,7 +140,7 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 
 			osg::StateSet* ss = geode->getOrCreateStateSet();
 
-			ss->setTextureAttributeAndModes(0, g_pingpong_texture[i],
+			ss->setTextureAttributeAndModes(0, g_first_texture,
 											osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;
@@ -143,7 +151,7 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 			ss->addUniform(new osg::Uniform("baseTexture", 0));
 			ss->addUniform(new osg::Uniform("u_screen_width", w));
 			ss->addUniform(new osg::Uniform("u_screen_height", h));
-			ss->addUniform(new osg::Uniform("horizontal", i % 2 == 0));
+			ss->addUniform(new osg::Uniform("horizontal", i));
 			ss->setAttributeAndModes(program, osg::StateAttribute::ON);
 		}
 	}
@@ -170,11 +178,6 @@ void create_hud_fbo(float w, float h, osg::Texture2D* texture2D)
 
 		g_screenQuat->setDataVariance(osg::Object::DYNAMIC);
 		g_screenQuat->setSupportsDisplayList(false);
-
-		texture2D->setTextureSize(1024, 1024);
-		texture2D->setInternalFormat(GL_RGBA);
-		texture2D->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-		texture2D->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 
 		osg::StateSet* ss = geode->getOrCreateStateSet();
 
@@ -216,7 +219,7 @@ void create_first_fbo(osg::Group* modelGroup, osgViewer::Viewer* view)
 	g_first_fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 
 	// attach the texture and use it as the color buffer.
-	g_first_fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[0],
+	g_first_fbo->attach(osg::Camera::COLOR_BUFFER, g_first_texture,
 						0, 0, false,
 						4, 4);
 
@@ -237,13 +240,13 @@ void read_model()
 	{
 		//modelGroup->addChild(createLine(allPTs, osg::Vec4(0, 0, 1, 1), osg::PrimitiveSet::LINE_LOOP));
 
-		osg::PositionAttitudeTransform* pat1 = new osg::PositionAttitudeTransform;
-		{
-			osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\res\\teapot.obj");
-			pat1->setPosition(osg::Vec3(0, 0, 7));
-			pat1->addChild(node2);
-			g_modelGroup->addChild(pat1);
-		}
+		//osg::PositionAttitudeTransform* pat1 = new osg::PositionAttitudeTransform;
+		//{
+		//	osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\res\\teapot.obj");
+		//	pat1->setPosition(osg::Vec3(0, 0, 7));
+		//	pat1->addChild(node2);
+		//	g_modelGroup->addChild(pat1);
+		//}
 
 		osg::PositionAttitudeTransform* pat2 = new osg::PositionAttitudeTransform;
 		{
@@ -253,13 +256,13 @@ void read_model()
 			g_modelGroup->addChild(pat2);
 		}
 
-		osg::PositionAttitudeTransform* pat3 = new osg::PositionAttitudeTransform;
-		{
-			osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\cube.obj");
-			pat3->setPosition(osg::Vec3(0, 0, 5));
-			pat3->addChild(node2);
-			g_modelGroup->addChild(pat3);
-		}
+		//osg::PositionAttitudeTransform* pat3 = new osg::PositionAttitudeTransform;
+		//{
+		//	osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\cube.obj");
+		//	pat3->setPosition(osg::Vec3(0, 0, 5));
+		//	pat3->addChild(node2);
+		//	g_modelGroup->addChild(pat3);
+		//}
 	}
 }
 
@@ -269,10 +272,11 @@ void start(float w, float h, osgViewer::Viewer* view)
 	set_pingpong_texture();
 
 	create_first_fbo(g_modelGroup, view);
-
 	create_blur_fbo(w, h, view);
-
-	create_hud_fbo(w, h, g_pingpong_texture[PING_PONG_NUM-1]);
+	int id = 1;// PING_PONG_NUM - 2;
+	create_hud_fbo(w, h,
+		//g_first_texture);
+	g_pingpong_texture[0]);
 
 	g_root->addChild(g_first_fbo);
 
