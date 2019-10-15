@@ -14,7 +14,7 @@ void main()
     //vec3 Kd = vColor.rgb;
     vec4 texColor = texture2D( baseTexture, texcoord);
     
-    vec2 tex_offset = 1.0 / textureSize(baseTexture, 0); // gets size of single texel
+    vec2 tex_offset = 1 / textureSize(baseTexture, 0); // gets size of single texel
     vec3 result = texture(baseTexture, texcoord).rgb * weight[0]; // current fragment's contribution
     if(horizontal)
     {

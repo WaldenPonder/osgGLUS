@@ -10,15 +10,18 @@
 #include <osgViewer/Viewer>
 #include <sstream>
 
+#define PING_PONG_NUM 10
+
 osg::Camera*	g_hudCamera  = new osg::Camera;
-osg::Group*		g_root		 = new osg::Group();
-osg::Camera*	g_first_fbo = new osg::Camera;
-osg::Camera*	g_pingpong_fbo[10];
-osg::Texture2D* g_pingpong_texture[2];
+osg::Group*		g_root		 = new osg::Group;
+osg::Camera*	g_first_fbo  = new osg::Camera;
+osg::Group*		g_modelGroup = new osg::Group;
+osg::Camera*	g_pingpong_fbo[PING_PONG_NUM];
+osg::Texture2D* g_pingpong_texture[PING_PONG_NUM];
 
 osg::Geometry* g_screenQuat = nullptr;
 
-void set_up(float w, float h, osgViewer::Viewer* view);
+void start(float w, float h, osgViewer::Viewer* view);
 
 class camere_callback : public osg::Callback
 {
@@ -70,7 +73,7 @@ class PickHandler : public osgGA::GUIEventHandler
 			if (ea.getKey() == osgGA::GUIEventAdapter::KEY_A)
 			{
 				osg::Viewport* vp = view->getCamera()->getViewport();
-				set_up(vp->width(), vp->height(), view);
+				start(vp->width(), vp->height(), view);
 			}
 			break;
 		}
@@ -83,10 +86,10 @@ class PickHandler : public osgGA::GUIEventHandler
 
 void set_pingpong_texture()
 {
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < PING_PONG_NUM; i++)
 	{
 		osg::Texture2D* texture2D = new osg::Texture2D;
-		g_pingpong_texture[i % 2]  = texture2D;
+		g_pingpong_texture[i]	 = texture2D;
 		texture2D->setTextureSize(1024, 1024);
 		texture2D->setInternalFormat(GL_RGBA);
 		texture2D->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
@@ -94,18 +97,15 @@ void set_pingpong_texture()
 	}
 }
 
-void create_blur_camera(float w, float h, osgViewer::Viewer* view)
+void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 {
-	set_pingpong_texture();
-
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < PING_PONG_NUM; i++)
 	{
 		g_pingpong_fbo[i] = new osg::Camera;
-		osg::Camera* fbo	   = g_pingpong_fbo[i];
+		osg::Camera* fbo  = g_pingpong_fbo[i];
 
-		osg::Texture2D* texture2D  = g_pingpong_texture[i % 2];
-		osg::Geometry*  screenQuat = osg::createTexturedQuadGeometry(
-			 osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
+		osg::Geometry* screenQuat = osg::createTexturedQuadGeometry(
+			osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 		{
 			fbo->setClearColor(osg::Vec4());
 			fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
@@ -116,9 +116,9 @@ void create_blur_camera(float w, float h, osgViewer::Viewer* view)
 			fbo->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 			fbo->setViewport(0, 0, 1024, 1024);
 			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-			g_first_fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[(i + 1) % 2],
-								 0, 0, false,
-								 4, 4);
+			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[(i + 1) % PING_PONG_NUM],
+						0, 0, false,
+						4, 4);
 
 			osg::Geode* geode = new osg::Geode;
 			fbo->addChild(geode);
@@ -132,7 +132,7 @@ void create_blur_camera(float w, float h, osgViewer::Viewer* view)
 
 			osg::StateSet* ss = geode->getOrCreateStateSet();
 
-			ss->setTextureAttributeAndModes(0, texture2D,
+			ss->setTextureAttributeAndModes(0, g_pingpong_texture[i],
 											osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;
@@ -149,7 +149,7 @@ void create_blur_camera(float w, float h, osgViewer::Viewer* view)
 	}
 }
 
-void create_hud_camera(float w, float h, osg::Texture2D* texture2D)
+void create_hud_fbo(float w, float h, osg::Texture2D* texture2D)
 {
 	g_screenQuat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 	{
@@ -159,8 +159,8 @@ void create_hud_camera(float w, float h, osg::Texture2D* texture2D)
 		g_hudCamera->setRenderOrder(osg::Camera::POST_RENDER);
 		g_hudCamera->setClearMask(GL_DEPTH_BUFFER_BIT);
 		g_hudCamera->getOrCreateStateSet()->setMode(GL_LIGHTING,
-			osg::StateAttribute::OFF);
-		
+													osg::StateAttribute::OFF);
+
 		osg::Geode* geode = new osg::Geode;
 		g_hudCamera->addChild(geode);
 		geode->addChild(g_screenQuat);
@@ -179,11 +179,11 @@ void create_hud_camera(float w, float h, osg::Texture2D* texture2D)
 		osg::StateSet* ss = geode->getOrCreateStateSet();
 
 		ss->setTextureAttributeAndModes(0, texture2D,
-			osg::StateAttribute::ON);
+										osg::StateAttribute::ON);
 
 		osg::ref_ptr<osg::Program> program = new osg::Program;
-		osg::Shader*			   vert = osgDB::readShaderFile(osg::Shader::VERTEX, "outline.vert");
-		osg::Shader*			   frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, "outline.frag");
+		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, "outline.vert");
+		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, "outline.frag");
 		program->addShader(vert);
 		program->addShader(frag);
 		ss->addUniform(new osg::Uniform("baseTexture", 0));
@@ -215,17 +215,16 @@ void create_first_fbo(osg::Group* modelGroup, osgViewer::Viewer* view)
 	// tell the camera to use OpenGL frame buffer object where supported.
 	g_first_fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 
+	// attach the texture and use it as the color buffer.
+	g_first_fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[0],
+						0, 0, false,
+						4, 4);
 
-		// attach the texture and use it as the color buffer.
-		g_first_fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[0],
-			0, 0, false,
-			4, 4);
-	
 	g_first_fbo->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
 	g_first_fbo->setViewMatrix(view->getCamera()->getViewMatrix());
 }
 
-void set_up(float w, float h, osgViewer::Viewer* view)
+void read_model()
 {
 	std::vector<osg::Vec3d> allPTs;
 	allPTs.push_back(osg::Vec3(0, 0, 0));
@@ -234,8 +233,7 @@ void set_up(float w, float h, osgViewer::Viewer* view)
 
 	osg::DisplaySettings::instance()->setNumMultiSamples(4);
 
-	osg::Group* modelGroup = new osg::Group;
-	g_root->addChild(modelGroup);
+	g_root->addChild(g_modelGroup);
 	{
 		//modelGroup->addChild(createLine(allPTs, osg::Vec4(0, 0, 1, 1), osg::PrimitiveSet::LINE_LOOP));
 
@@ -244,7 +242,7 @@ void set_up(float w, float h, osgViewer::Viewer* view)
 			osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\res\\teapot.obj");
 			pat1->setPosition(osg::Vec3(0, 0, 7));
 			pat1->addChild(node2);
-			modelGroup->addChild(pat1);
+			g_modelGroup->addChild(pat1);
 		}
 
 		osg::PositionAttitudeTransform* pat2 = new osg::PositionAttitudeTransform;
@@ -252,7 +250,7 @@ void set_up(float w, float h, osgViewer::Viewer* view)
 			osg::Node* node2 = osgDB::readNodeFile("E:\\FileRecv\\abc.osg");
 			pat2->setPosition(osg::Vec3(0, 15, 0));
 			pat2->addChild(node2);
-			modelGroup->addChild(pat2);
+			g_modelGroup->addChild(pat2);
 		}
 
 		osg::PositionAttitudeTransform* pat3 = new osg::PositionAttitudeTransform;
@@ -260,23 +258,28 @@ void set_up(float w, float h, osgViewer::Viewer* view)
 			osg::Node* node2 = osgDB::readNodeFile("D:\\Shader\\cube.obj");
 			pat3->setPosition(osg::Vec3(0, 0, 5));
 			pat3->addChild(node2);
-			modelGroup->addChild(pat3);
+			g_modelGroup->addChild(pat3);
 		}
 	}
+}
 
-	create_first_fbo(modelGroup, view);
-	
-	create_blur_camera(w, h, view);
-		
-	create_hud_camera(w, h, g_pingpong_texture[1]);
+void start(float w, float h, osgViewer::Viewer* view)
+{
+	read_model();
+	set_pingpong_texture();
+
+	create_first_fbo(g_modelGroup, view);
+
+	create_blur_fbo(w, h, view);
+
+	create_hud_fbo(w, h, g_pingpong_texture[PING_PONG_NUM-1]);
 
 	g_root->addChild(g_first_fbo);
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < PING_PONG_NUM; i++)
 		g_root->addChild(g_pingpong_fbo[i]);
 
 	g_root->addChild(g_hudCamera);
-
 }
 
 int main(int argc, char** argv)

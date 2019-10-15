@@ -50,12 +50,11 @@ void main()
     
     if (graylevel > gradientThreshold)
     {
-        gl_FragColor = vec4(1, 0, 0, 1.0);
+        gl_FragColor =  vec4(1, 0, 0, 1);
     } 
     else 
     {
-        discard;
-       //gl_FragColor = texColor;
+        gl_FragColor = vec4(0, 0, 0, 1);
     }
 }
 
