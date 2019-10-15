@@ -115,16 +115,17 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 			osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 		{
 			fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-			fbo->setClearColor(osg::Vec4());
+			fbo->setClearColor(osg::Vec4(1,0,0,1));
 			
-			//fbo->setProjectionMatrixAsOrtho2D(0, w, 0, h);
-			//fbo->setViewMatrix(osg::Matrix::identity());
+			fbo->setProjectionMatrixAsOrtho2D(0, w, 0, h);
+			fbo->setViewMatrix(osg::Matrix::identity());
 			fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 			fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			fbo->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 			fbo->setViewport(0, 0, 1024, 1024);
 			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[/*(i + 1) % PING_PONG_NUM*/0],
+			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[0],
+				//g_pingpong_texture[(i + 1) % PING_PONG_NUM],
 						0, 0, false,
 						4, 4);
 			
@@ -140,7 +141,7 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 
 			osg::StateSet* ss = geode->getOrCreateStateSet();
 
-			ss->setTextureAttributeAndModes(0, g_first_texture,
+			ss->setTextureAttributeAndModes(0, i == 0 ? g_first_texture : g_pingpong_texture[i-1],
 											osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;

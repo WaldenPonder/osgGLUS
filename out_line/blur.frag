@@ -12,28 +12,31 @@ uniform int horizontal;
 void main()
 {	  
     //vec3 Kd = vColor.rgb;
-    vec4 texColor = texture2D( baseTexture, texcoord);
+    //vec4 texColor = texture2D( baseTexture, texcoord);
     
+	  gl_FragColor = vec4(0,0,1,1);
+	  return;
     vec2 tex_offset = 1 / textureSize(baseTexture, 0); // gets size of single texel
-    vec3 result = texture(baseTexture, texcoord).rgb * weight[0]; // current fragment's contribution
+    //vec3 result = texture(baseTexture, texcoord).rgb * weight[0]; // current fragment's contribution
+	vec3 result = vec3(0,0,1);
     if(horizontal % 2 == 0)
     {
         for(int i = 1; i < 5; ++i)
         {
-            result += texture(baseTexture, texcoord + vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
-            result += texture(baseTexture, texcoord - vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
+            result += texture2D(baseTexture, texcoord + vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
+            result += texture2D(baseTexture, texcoord - vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
         }
     }
     else
     {
         for(int i = 1; i < 5; ++i)
         {
-            result += texture(baseTexture, texcoord + vec2(0.0, tex_offset.y * i)).rgb * weight[i];
-            result += texture(baseTexture, texcoord - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
+            result += texture2D(baseTexture, texcoord + vec2(0.0, tex_offset.y * i)).rgb * weight[i];
+            result += texture2D(baseTexture, texcoord - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
         }
     }
 	//result = u_color
-    gl_FragColor = vec4(clamp(result, 0, 1.0), 1.0);
+    gl_FragColor = vec4(result, 1.0);
 }
 
 
