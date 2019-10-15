@@ -39,27 +39,24 @@ float sobel_filter()
     return dist;
 }
 
-
-
 void main()
 {	
     //vec3 Kd = vColor.rgb;
     vec4 texColor = texture2D( baseTexture, texcoord);
-
+    
     // predefine var
-    float gradientThreshold = 0.05;    
+    float gradientThreshold = 0.005;    
     float graylevel = sobel_filter();
     
     if (graylevel > gradientThreshold)
     {
-        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        gl_FragColor = vec4(1, 0, 0, 1.0);
     } 
     else 
     {
-      discard;
-    
-        gl_FragColor = texColor;
+        discard;
+       //gl_FragColor = texColor;
     }
-
-  	
 }
+
+
