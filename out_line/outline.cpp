@@ -10,7 +10,7 @@
 #include <osgViewer/Viewer>
 #include <sstream>
 
-#define PING_PONG_NUM 1
+#define PING_PONG_NUM 8
 
 osg::Camera*	g_hudCamera  = new osg::Camera;
 osg::Group*		g_root		 = new osg::Group;
@@ -19,7 +19,7 @@ osg::Group*		g_modelGroup = new osg::Group;
 osg::Camera*	g_pingpong_fbo[PING_PONG_NUM] = {nullptr};
 osg::Texture2D* g_pingpong_texture[PING_PONG_NUM];
 osg::Texture2D* g_first_texture = new osg::Texture2D;
-
+osg::Geode* g_geode_quat = nullptr;
 
 osg::Geometry* g_screenQuat = nullptr;
 
@@ -58,12 +58,12 @@ class PickHandler : public osgGA::GUIEventHandler
 		fbo_camera->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
 		fbo_camera->setViewMatrix(view->getCamera()->getViewMatrix());
 
-		for (int i = 0; i < PING_PONG_NUM; i++)
-		{
-			if(!g_pingpong_fbo[i]) continue;
-			g_pingpong_fbo[i]->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
-			g_pingpong_fbo[i]->setViewMatrix(view->getCamera()->getViewMatrix());
-		}
+			//for (int i = 0; i < PING_PONG_NUM; i++)
+			//{
+			//	if(!g_pingpong_fbo[i]) continue;
+			//	g_pingpong_fbo[i]->setProjectionMatrix(view->getCamera()->getProjectionMatrix());
+			//	g_pingpong_fbo[i]->setViewMatrix(view->getCamera()->getViewMatrix());
+			//}
 		
 		switch (ea.getEventType())
 		{
@@ -114,20 +114,29 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 		osg::Geometry* screenQuat = osg::createTexturedQuadGeometry(
 			osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 		{
+			fbo->setName("FBO_CAMERA");
+			// set up the background color and clear mask.
+			fbo->setClearColor(osg::Vec4());
+			fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			// set view
 			fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-			fbo->setClearColor(osg::Vec4(1,0,0,1));
-			
+			// set viewport
+			fbo->setViewport(0, 0, 1024, 1024);
+
+			// set the camera to render before the main camera.
+			fbo->setRenderOrder(osg::Camera::PRE_RENDER, 10);
+
+			// tell the camera to use OpenGL frame buffer object where supported.
+			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+
+			// attach the texture and use it as the color buffer.
+			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[i],
+				0, 0, false,
+				4, 4);
+
 			fbo->setProjectionMatrixAsOrtho2D(0, w, 0, h);
 			fbo->setViewMatrix(osg::Matrix::identity());
-			fbo->setRenderOrder(osg::Camera::PRE_RENDER);
-			fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			fbo->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-			fbo->setViewport(0, 0, 1024, 1024);
-			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-			fbo->attach(osg::Camera::COLOR_BUFFER, g_pingpong_texture[0],
-				//g_pingpong_texture[(i + 1) % PING_PONG_NUM],
-						0, 0, false,
-						4, 4);
+
 			
 			osg::Geode* geode = new osg::Geode;
 			fbo->addChild(geode);
@@ -141,8 +150,7 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 
 			osg::StateSet* ss = geode->getOrCreateStateSet();
 
-			ss->setTextureAttributeAndModes(0, i == 0 ? g_first_texture : g_pingpong_texture[i-1],
-											osg::StateAttribute::ON);
+			ss->setTextureAttributeAndModes(0, i == 0 ? g_first_texture : g_pingpong_texture[i-1], osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;
 			osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, "blur.vert");
@@ -152,13 +160,13 @@ void create_blur_fbo(float w, float h, osgViewer::Viewer* view)
 			ss->addUniform(new osg::Uniform("baseTexture", 0));
 			ss->addUniform(new osg::Uniform("u_screen_width", w));
 			ss->addUniform(new osg::Uniform("u_screen_height", h));
-			ss->addUniform(new osg::Uniform("horizontal", i));
+			ss->addUniform(new osg::Uniform("u_is_horizontal", i % 2 == 0));
 			ss->setAttributeAndModes(program, osg::StateAttribute::ON);
 		}
 	}
 }
 
-void create_hud_fbo(float w, float h, osg::Texture2D* texture2D)
+void create_hud_fbo(float w, float h, osg::Texture2D* texture)
 {
 	g_screenQuat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
 	{
@@ -170,21 +178,17 @@ void create_hud_fbo(float w, float h, osg::Texture2D* texture2D)
 		g_hudCamera->getOrCreateStateSet()->setMode(GL_LIGHTING,
 													osg::StateAttribute::OFF);
 
-		osg::Geode* geode = new osg::Geode;
-		g_hudCamera->addChild(geode);
-		geode->addChild(g_screenQuat);
-		geode->getOrCreateStateSet()->setRenderingHint(
+		g_geode_quat = new osg::Geode;
+		g_hudCamera->addChild(g_geode_quat);
+		g_geode_quat->addChild(g_screenQuat);
+		g_geode_quat->getOrCreateStateSet()->setRenderingHint(
 			osg::StateSet::TRANSPARENT_BIN);
-		geode->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+		g_geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
 		g_screenQuat->setDataVariance(osg::Object::DYNAMIC);
 		g_screenQuat->setSupportsDisplayList(false);
 
-		osg::StateSet* ss = geode->getOrCreateStateSet();
-
-		ss->setTextureAttributeAndModes(0, texture2D,
-										osg::StateAttribute::ON);
-
+		osg::StateSet* ss = g_geode_quat->getOrCreateStateSet();
 		osg::ref_ptr<osg::Program> program = new osg::Program;
 		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, "outline.vert");
 		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, "outline.frag");
@@ -194,6 +198,7 @@ void create_hud_fbo(float w, float h, osg::Texture2D* texture2D)
 		ss->addUniform(new osg::Uniform("u_screen_width", w));
 		ss->addUniform(new osg::Uniform("u_screen_height", h));
 		ss->setAttributeAndModes(program, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
 	}
 }
 
@@ -274,10 +279,7 @@ void start(float w, float h, osgViewer::Viewer* view)
 
 	create_first_fbo(g_modelGroup, view);
 	create_blur_fbo(w, h, view);
-	int id = 1;// PING_PONG_NUM - 2;
-	create_hud_fbo(w, h,
-		//g_first_texture);
-	g_pingpong_texture[0]);
+	create_hud_fbo(w, h, g_pingpong_texture[PING_PONG_NUM-1]);
 
 	g_root->addChild(g_first_fbo);
 
@@ -290,14 +292,13 @@ void start(float w, float h, osgViewer::Viewer* view)
 int main(int argc, char** argv)
 {
 	osg::ArgumentParser arguments(&argc, argv);
-
-	osg::setNotifyLevel(osg::NotifySeverity::INFO);
-
+	
 	osgViewer::Viewer viewer(arguments);
 	viewer.setSceneData(g_root);
 	viewer.addEventHandler(new PickHandler(g_first_fbo));
 
 	add_event_handler(viewer);
+	osg::setNotifyLevel(osg::NotifySeverity::WARN);
 
 	return viewer.run();
 }

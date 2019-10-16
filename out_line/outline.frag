@@ -41,16 +41,16 @@ float sobel_filter()
 
 void main()
 {	
-    //vec3 Kd = vColor.rgb;
-    vec4 texColor = texture2D( baseTexture, texcoord);
-    
+   vec4 texColor = texture2D( baseTexture, texcoord);
+   //gl_FragColor =  texColor;
+   //return;
     // predefine var
-    float gradientThreshold = 0.005;    
+    float gradientThreshold = 0.01;    
     float graylevel = sobel_filter();
     
     if (graylevel > gradientThreshold)
     {
-	    /* vec2 tex_offset = 1 / textureSize(baseTexture, 0); // gets size of single texel
+	   vec2 tex_offset = 1 / textureSize(baseTexture, 0); // gets size of single texel
         vec3 result = vec4(1, 0, 0, 1) * weight[0]; // current fragment's contribution
 		if(1)
 		{
@@ -67,14 +67,14 @@ void main()
 				result += texture(baseTexture, texcoord + vec2(0.0, tex_offset.y * i)).rgb * weight[i];
 				result += texture(baseTexture, texcoord - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
 			}
-		} */
+		}   
 	
-        gl_FragColor =  vec4(1,1,0, 1);
+        gl_FragColor =  texColor;//vec4(result, 1);
     } 
     else 
     {
 	   //discard;
-        gl_FragColor = vec4(0, 0, 0, 1);
+       gl_FragColor = vec4(0, 0, 0, 1);
     }
 }
 
