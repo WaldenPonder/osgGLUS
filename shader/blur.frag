@@ -9,8 +9,6 @@ uniform bool u_is_horizontal;
 void main()
 {	
     vec4 texColor = texture( baseTexture, texcoord);
-   // gl_FragColor = vec4(0,0,1,1);
-    //return;
  
     vec2 tex_offset = 1.0 / textureSize(baseTexture, 0); // gets size of single texel
     vec3 result = texColor * weight[0]; // current fragment's contribution
@@ -30,10 +28,6 @@ void main()
             result += texture(baseTexture, texcoord - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
         }
     }  
-
-    //result = pow(result, vec3(1.0 / 1.1));
-    
-    //if(result.r + result.g + result.b < 1e-3) discard;
     
     gl_FragColor =  vec4(result, texColor.a); 
 }

@@ -17,7 +17,7 @@ osg::Group*		g_root		 = new osg::Group;
 osg::Camera*	g_first_fbo  = new osg::Camera;
 osg::Camera*	g_second_fbo = new osg::Camera;
 osg::Group*		g_modelGroup = new osg::Group;
-osg::Camera*	g_pingpong_fbo[PING_PONG_NUM] = {nullptr};
+osg::Camera*	g_pingpong_fbo[PING_PONG_NUM];
 osg::Texture2D* g_first_texture = new osg::Texture2D;
 osg::Texture2D* g_second_texture = new osg::Texture2D;
 
