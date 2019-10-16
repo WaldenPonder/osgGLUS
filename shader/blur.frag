@@ -39,7 +39,7 @@ void main()
         }
     }  
 
-    result = pow(result, vec3(1.0 / 1.1));
+    //result = pow(result, vec3(1.0 / 1.1));
     
     //if(result.r + result.g + result.b < 1e-3) discard;
     

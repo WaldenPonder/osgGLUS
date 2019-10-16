@@ -10,7 +10,7 @@
 #include <osgViewer/Viewer>
 #include <sstream>
 
-#define PING_PONG_NUM 8
+#define PING_PONG_NUM 4
 
 osg::Camera*	g_hudCamera  = new osg::Camera;
 osg::Group*		g_root		 = new osg::Group;

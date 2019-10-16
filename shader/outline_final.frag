@@ -6,9 +6,9 @@ void main()
 {	
     vec4 result = texture( baseTexture, texcoord);
 
-    result = pow(result, vec4(1.0 / 1.1));
+    result = pow(result, vec4(1.0 / 2.1));
     
-    //if(result.r + result.g + result.b < 1e-6) discard;
+    //if(result.r + result.g + result.b < 1e-3) discard;
     
     gl_FragColor =  result; 
 }
