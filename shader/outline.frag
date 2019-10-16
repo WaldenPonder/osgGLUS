@@ -1,8 +1,4 @@
 uniform sampler2D baseTexture;
-
-varying vec3 vNormal; 
-varying vec3 vViewPosition; 
-varying vec4 vColor;
 varying vec2 texcoord;
 
 uniform float u_screen_width, u_screen_height;

@@ -1,21 +1,13 @@
 uniform sampler2D baseTexture;
 
-varying vec3 vNormal; 
-varying vec3 vViewPosition; 
-varying vec4 vColor;
 varying vec2 texcoord;
 
 uniform float u_screen_width, u_screen_height;
 uniform float weight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
 uniform bool u_is_horizontal;
 
-float rgb2gray(vec3 color) {
-    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
-}
-
 void main()
 {	
-    //vec3 Kd = vColor.rgb;
     vec4 texColor = texture( baseTexture, texcoord);
    // gl_FragColor = vec4(0,0,1,1);
     //return;
