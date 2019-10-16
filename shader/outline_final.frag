@@ -13,7 +13,7 @@ void main()
     
     //if(result.r + result.g + result.b < 1e-3) discard;
     
-    gl_FragColor =  vec4(result.rag, rgb2gray(result.rgb)); 
+    gl_FragColor =  vec4(result.rag, .5 * rgb2gray(result.rgb)); 
 }
 
 
