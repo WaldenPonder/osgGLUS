@@ -1,10 +1,15 @@
+precision highp float;
+
 uniform sampler2D baseTexture;
 varying vec2 texcoord;
 
 uniform float u_screen_width, u_screen_height;
-uniform float weight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+uniform float u_gradientThreshold;
+uniform vec3 u_color;
 
 float rgb2gray(vec3 color) {
+    
+   // return (color.r + color.g + color.b) / 3.0;
     return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
 }
 
@@ -16,8 +21,8 @@ float pixel_operator(float dx, float dy) {
 
 float sobel_filter()
 {
-    float dx = 1.0 / float(u_screen_width); // e.g. 1920
-    float dy = 1.0 / float(u_screen_height); // e.g. 1080
+    float dx = 1.0 / float(u_screen_width);
+    float dy = 1.0 / float(u_screen_height); 
 
     float s00 = pixel_operator(-dx, dy);
     float s10 = pixel_operator(-dx, 0.0);
@@ -37,18 +42,22 @@ float sobel_filter()
 
 void main()
 {	
-    // predefine var
-    float gradientThreshold = 0.01;    
-    float graylevel = sobel_filter();
-    
-    if (graylevel > gradientThreshold)
+    //vec4 c = texture( baseTexture, texcoord);
+    //gl_FragColor =  c;
+
+    //return;
+
+    float dist = sobel_filter();
+    gl_FragColor =  vec4(u_color * dist, 1.0); 
+    //return;
+/*     //*************************边缘检测伐值（越小出来的轮廓越多）**************************************************  
+    if(dist > u_gradientThreshold)
     {
-        gl_FragColor =  vec4(0,1,1, 1);
+    //**************************轮廓颜色*************************************************
+        gl_FragColor =  vec4(u_color, 1);     
     } 
-    else 
-    {
-       gl_FragColor = vec4(0, 0, 0, 1);
-    }
+    else
+       gl_FragColor = vec4(0, 0, 0, 1);   */
 }
 
 

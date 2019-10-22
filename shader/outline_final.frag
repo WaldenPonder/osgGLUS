@@ -1,19 +1,18 @@
 uniform sampler2D baseTexture;
 varying vec2 texcoord;
+uniform float u_alpha_factor;
 
-float rgb2gray(vec3 color) {
+/* float rgb2gray(vec3 color) {
     return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
-}
+} */
 
 void main()
 {	
     vec4 result = texture( baseTexture, texcoord);
-
-    //result = pow(result, vec4(1.0 / 2.2));
+    //***********************轮廓透明度系数***************************************
     
-    //if(result.r + result.g + result.b < 1e-3) discard;
-    
-    gl_FragColor =  vec4(result.rag, .5 * rgb2gray(result.rgb)); 
+   gl_FragColor =  vec4(result.rgb, u_alpha_factor *  max(result.b,max(result.r, result.g))); 
+    //gl_FragColor = result;//vec4(result.rgb, .5 * rgb2gray(result.rgb));
 }
 
 
