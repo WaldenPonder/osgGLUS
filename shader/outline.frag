@@ -1,4 +1,4 @@
-precision highp float;
+//precision highp float;
 
 uniform sampler2D baseTexture;
 varying vec2 texcoord;
@@ -48,16 +48,16 @@ void main()
     //return;
 
     float dist = sobel_filter();
-    gl_FragColor =  vec4(u_color * dist, 1.0); 
+    //gl_FragColor =  vec4(u_color * dist, 1.0); 
     //return;
-/*     //*************************边缘检测伐值（越小出来的轮廓越多）**************************************************  
-    if(dist > u_gradientThreshold)
+     //*************************边缘检测伐值（越小出来的轮廓越多）**************************************************  
+    if(dist > .001)
     {
     //**************************轮廓颜色*************************************************
         gl_FragColor =  vec4(u_color, 1);     
     } 
     else
-       gl_FragColor = vec4(0, 0, 0, 1);   */
+       gl_FragColor = vec4(0, 0, 0, 1);   
 }
 
 

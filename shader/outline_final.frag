@@ -11,7 +11,8 @@ void main()
     vec4 result = texture( baseTexture, texcoord);
     //***********************轮廓透明度系数***************************************
     
-   gl_FragColor =  vec4(result.rgb, u_alpha_factor *  max(result.b,max(result.r, result.g))); 
+   gl_FragColor =  vec4(result.rgb, 1.0 *  max(result.b,max(result.r, result.g))); 
+  // gl_FragColor = vec4(1., 0., 0., 1.);
     //gl_FragColor = result;//vec4(result.rgb, .5 * rgb2gray(result.rgb));
 }
 

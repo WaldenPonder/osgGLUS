@@ -50,7 +50,7 @@ void main()
 
    //vec2 uv = vec2(gl_FragCoord.xy / vec2(u_screen_width, u_screen_height));
    //uv.y = 1.0 - uv.y;
-   gl_FragColor = blur13(baseTexture, texcoord, vec2(u_screen_width, u_screen_height),  u_dir);
+   gl_FragColor = blur13(baseTexture, texcoord, vec2(u_screen_width, u_screen_height),  vec2(0,0));
    //gl_FragColor = texture2D(baseTexture, texcoord);
 
   /*   vec4 texColor = texture( baseTexture, texcoord);

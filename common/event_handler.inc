@@ -1,28 +1,8 @@
 #pragma once
+#ifndef ADD_EVENT_HANDLERADD_EVENT_HANDLER
+#define ADD_EVENT_HANDLERADD_EVENT_HANDLER
 
-void add_event_handler(osgViewer::Viewer&   v);
-
-osg::Geometry* createLine(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::PrimitiveSet::Mode model, float nWidth);
-
-class RemovePloyVisitor : public osg::NodeVisitor
-{
- public:
-	RemovePloyVisitor() : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) {}
-
-	virtual void apply(osg::Geometry& geometry)
-	{
-		for (osg::ref_ptr<osg::PrimitiveSet>& ps : geometry.getPrimitiveSetList())
-		{
-			// ps->setMode(mode_ % (osg::PrimitiveSet::PATCHES + 1));
-		}
-
-		geometry.dirtyGLObjects();
-	}
-
-	int mode_;
-};
-
-void add_event_handler(osgViewer::Viewer&   viewer)
+inline void add_event_handler(osgViewer::Viewer&   viewer)
 {
 	osg::setNotifyLevel(osg::NotifySeverity::WARN);
 
@@ -52,3 +32,5 @@ void add_event_handler(osgViewer::Viewer&   viewer)
 	// add the screen capture handler
 	viewer.addEventHandler(new osgViewer::ScreenCaptureHandler);
 }
+
+#endif // !ADD_EVENT_HANDLERADD_EVENT_HANDLER

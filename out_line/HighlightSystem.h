@@ -1,24 +1,22 @@
 #pragma once
-#include "C\thCoreHeader.h"
-#include "C\thCoreHeader.h"
 #include <vector>
 #include <osg/vec3>
 #include <osg/vec3d>
 #include <osg/vec4>
 #include <osg/Object>
 #include <osg/Matrixd>
-
-class CViewControlData;
+#include <osgViewer/View>
+//class CViewControlData;
 
 namespace osg
 {
 	class Node;
 };
 
-class TH_CORE_API HighlightSystem
+class HighlightSystem
 {
 public:
-	HighlightSystem(CViewControlData* pOSG);
+	HighlightSystem(osgViewer::View* pOSG);
 	~HighlightSystem();
 
 	void addHighlight(osg::Node* pNode);
@@ -32,6 +30,8 @@ public:
 	void setColor(const osg::Vec4& color);
 	//ÂÖÀª¼ì²âÏµÊý
 	void setOutLineFactor(float f = 0.005);
+
+	void reset();
 
 private:
 	struct Impl;

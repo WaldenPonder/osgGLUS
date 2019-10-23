@@ -35,7 +35,7 @@ using namespace std;
 #include <stdio.h>
 #include <io.h>
 
-string shader_dir()
+inline string shader_dir()
 {
 	if (!access("../shader", 0))
 	{
@@ -49,7 +49,7 @@ string shader_dir()
 	return "";
 }
 
-void configureShaders(osg::StateSet* stateSet)
+inline void configureShaders(osg::StateSet* stateSet)
 {
 	const std::string vertexSource =
 		"#version 140 \n"
@@ -95,7 +95,7 @@ void configureShaders(osg::StateSet* stateSet)
 	//stateSet->addUniform(new osg::Uniform("ecLightDir", lightDir));
 }
 
-osg::Geometry* createLine(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::PrimitiveSet::Mode model, float nWidth = 2)
+inline osg::Geometry* createLine(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::PrimitiveSet::Mode model, float nWidth = 2)
 {
 	int nCount = allPTs.size();
 
@@ -127,6 +127,7 @@ osg::Geometry* createLine(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color
 		stateset->setAttributeAndModes(new osg::Point(3));
 		stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 	}
-	
+
 	return pGeometry.release();
 }
+
