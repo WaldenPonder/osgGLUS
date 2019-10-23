@@ -17,36 +17,35 @@
 #define UNIFORM_CALLBACK
 #define NM_NO_PICK 1
 
-
 struct HighlightSystemPrivateData
 {
-	osg::FrameBufferObject*  ms_fbo_;
-	osg::FrameBufferObject*  normal_fbo_;
+	osg::FrameBufferObject* ms_fbo_;
+	osg::FrameBufferObject* normal_fbo_;
 
-	osg::Camera*			 first_fbo_  = nullptr;			//得到离屏的图
-	osg::Camera*			 second_fbo_ = nullptr;			//提取out line
-	osg::Camera*			 pingpong_fbo_[PING_PONG_NUM];  //模糊
-	osg::Camera*			 hud_camera_	 = nullptr;		//最终显示
-	osg::Texture2D*			 first_texture_  = nullptr;
-	osg::Texture2D*			 second_texture_ = nullptr;
-	osg::Texture2DMultisample* ms_texture_ = nullptr;
+	osg::Camera*			   first_camera_  = nullptr;		 //得到离屏的图
+	osg::Camera*			   second_camera_ = nullptr;		 //提取out line
+	osg::Camera*			   pingpong_camera_[PING_PONG_NUM];  //模糊
+	osg::Camera*			   hud_camera_	 = nullptr;		 //最终显示
+	osg::Texture2D*			   first_texture_  = nullptr;
+	osg::Texture2D*			   second_texture_ = nullptr;
+	osg::Texture2DMultisample* ms_texture_	 = nullptr;
 
 	//CViewControlData*		 pOSG_;
-	osgViewer::View* view;
+	osgViewer::View*		 view;
 	osg::ref_ptr<osg::Group> highlightRoot_ = new osg::Group;
 	float					 w_, h_;
-	
-	osg::Vec3 u_color = osg::Vec3(0, 0, 1);
-	float u_gradientThreshold = 0.005;
-	float u_alpha_factor = .9f;
-	bool is_enable = true;
+
+	osg::Vec3 u_color			  = osg::Vec3(0, 0, 1);
+	float	 u_gradientThreshold = 0.005;
+	float	 u_alpha_factor	  = .9f;
+	bool	  is_enable			  = true;
 };
 
 #ifdef UNIFORM_CALLBACK
 //轮廓颜色
 class OutLineColorUniform : public osg::Uniform::Callback
 {
-public:
+ public:
 	OutLineColorUniform(osg::Vec3& color) : color_(color) {}
 	void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
 	{
@@ -59,7 +58,7 @@ public:
 //边缘阀值
 class GradientThresholdUniform : public osg::Uniform::Callback
 {
-public:
+ public:
 	GradientThresholdUniform(float& g) : gradientThreshold_(g) {}
 	void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
 	{
@@ -72,7 +71,7 @@ public:
 //轮廓透明度
 class AlphaUniform : public osg::Uniform::Callback
 {
-public:
+ public:
 	AlphaUniform(float& g) : a_(g) {}
 	void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
 	{
@@ -88,31 +87,30 @@ struct HighlightSystem::Impl : public HighlightSystemPrivateData
 	class FirstCameraPredrawCallback : public osg::Camera::DrawCallback
 	{
 	 public:
-		 osg::observer_ptr<osg::Camera> main_camera;
+		osg::observer_ptr<osg::Camera> main_camera;
 
-		Impl*		 imp_;
+		Impl* imp_;
 		FirstCameraPredrawCallback(osg::Camera* main, Impl* imp) : main_camera(main), imp_(imp) {}
-		virtual void operator () (osg::RenderInfo& renderInfo) const
+		virtual void operator()(osg::RenderInfo& renderInfo) const
 		{
 			osg::GLExtensions* ext = renderInfo.getState()->get<osg::GLExtensions>();
 
 			osg::Viewport* vp = main_camera->getViewport();
 
-			imp_->first_fbo_->setViewMatrix(main_camera->getViewMatrix());
-			imp_->first_fbo_->setProjectionMatrix(main_camera->getProjectionMatrix());
-			
+			imp_->first_camera_->setViewMatrix(main_camera->getViewMatrix());
+			imp_->first_camera_->setProjectionMatrix(main_camera->getProjectionMatrix());
+
 			//if (first_fbo.get())
 			//{
 			//	osg::ref_ptr<osg::RefMatrix> proMat = new osg::RefMatrix(main_camera->getProjectionMatrix());
 			//	renderInfo.getState()->applyProjectionMatrix(proMat);
 			//	renderInfo.getState()->applyModelViewMatrix(main_camera->getViewMatrix());
 			//}
-						  
 			//if (imp_->w_ != vp->width() || imp_->h_ != vp->height())
 			//{
 			//	imp_->w_ = vp->width(), imp_->h_ = vp->height();
 			//	imp_->pOSG_->addCommand(new DbCommandFunction(
-			//		[this]() {					
+			//		[this]() {
 			//			imp_->start();
 			//	}));
 			//}
@@ -121,20 +119,21 @@ struct HighlightSystem::Impl : public HighlightSystemPrivateData
 			float h = vp->height();
 
 			imp_->ms_fbo_->apply(*renderInfo.getState());
+
 			//imp_->normal_fbo_->apply(*renderInfo.getState(), osg::FrameBufferObject::READ_FRAMEBUFFER);
 		}
 	};
 
 	class FirstCameraPosdrawCallback : public osg::Camera::DrawCallback
 	{
-	public:
+	 public:
 		osg::observer_ptr<osg::Camera> main_camera;
 
-		Impl*		 imp_;
+		Impl* imp_;
 		FirstCameraPosdrawCallback(osg::Camera* main, Impl* imp) : main_camera(main), imp_(imp) {}
-		virtual void operator () (osg::RenderInfo& renderInfo) const
+		virtual void operator()(osg::RenderInfo& renderInfo) const
 		{
-			osg::Viewport* vp = main_camera->getViewport();
+			osg::Viewport*	 vp  = main_camera->getViewport();
 			osg::GLExtensions* ext = renderInfo.getState()->get<osg::GLExtensions>();
 
 			float w = vp->width();
@@ -146,7 +145,7 @@ struct HighlightSystem::Impl : public HighlightSystemPrivateData
 			ext->glBlitFramebuffer(
 				0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2,
 				0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				GL_COLOR_BUFFER_BIT /*| GL_DEPTH_BUFFER_BIT*/, GL_NEAREST);
 
 			renderInfo.getState()->get<osg::GLExtensions>()->glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 		}
@@ -155,7 +154,7 @@ struct HighlightSystem::Impl : public HighlightSystemPrivateData
 	void set_pingpong_texture();
 
 	//得到离屏的图
-	void create_first_fbo();
+	void create_first_camera();
 
 	//提取out line
 	void create_secend_fbo();
@@ -173,7 +172,7 @@ void HighlightSystem::Impl::set_pingpong_texture()
 {
 	first_texture_  = new osg::Texture2D;
 	second_texture_ = new osg::Texture2D;
-	ms_texture_ = new osg::Texture2DMultisample;
+	ms_texture_		= new osg::Texture2DMultisample;
 
 	first_texture_->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 	first_texture_->setInternalFormat(GL_RGBA);
@@ -185,7 +184,6 @@ void HighlightSystem::Impl::set_pingpong_texture()
 	second_texture_->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
 	second_texture_->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 
-	
 	ms_texture_->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 	ms_texture_->setInternalFormat(GL_RGBA);
 	ms_texture_->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
@@ -193,21 +191,21 @@ void HighlightSystem::Impl::set_pingpong_texture()
 	ms_texture_->setNumSamples(4);
 }
 
-void HighlightSystem::Impl::create_first_fbo()
+void HighlightSystem::Impl::create_first_camera()
 {
-	first_fbo_ = new osg::Camera;
-	first_fbo_->setName("first_fbo_");
-	first_fbo_->addDescription("获取第一张纹理");
+	first_camera_ = new osg::Camera;
+	first_camera_->setName("first_fbo_");
+	first_camera_->addDescription("获取第一张纹理");
 	// set up the background color and clear mask.
-	first_fbo_->setClearColor(osg::Vec4());
-	first_fbo_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	first_camera_->setClearColor(osg::Vec4());
+	first_camera_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// set view
-	first_fbo_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	first_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 	// set viewport
 	//first_fbo_->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
 
 	// set the camera to render before the main camera.
-	first_fbo_->setRenderOrder(osg::Camera::PRE_RENDER);
+	first_camera_->setRenderOrder(osg::Camera::POST_RENDER);
 
 	// tell the camera to use OpenGL frame buffer object where supported.
 	//first_fbo_->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
@@ -215,46 +213,49 @@ void HighlightSystem::Impl::create_first_fbo()
 	// attach the texture and use it as the color buffer.
 	//first_fbo_->attach(osg::Camera::COLOR_BUFFER, first_texture_,
 	//				   0, 0, false);
-	//first_fbo_->setDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-	//first_fbo_->setReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-	
+	first_camera_->setDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+	first_camera_->setReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+
 	ms_fbo_ = new osg::FrameBufferObject;
 	ms_fbo_->setAttachment(osg::Camera::COLOR_BUFFER, osg::FrameBufferAttachment(ms_texture_));
-
+	ms_fbo_->setAttachment(osg::Camera::DEPTH_BUFFER, osg::FrameBufferAttachment(new osg::RenderBuffer(TEXTURE_SIZE1, TEXTURE_SIZE2, GL_DEPTH_COMPONENT24)));
 	normal_fbo_ = new osg::FrameBufferObject;
 	normal_fbo_->setAttachment(osg::Camera::COLOR_BUFFER, osg::FrameBufferAttachment(first_texture_));
-
+	normal_fbo_->setAttachment(osg::Camera::DEPTH_BUFFER, osg::FrameBufferAttachment(new osg::RenderBuffer(TEXTURE_SIZE1, TEXTURE_SIZE2, GL_DEPTH_COMPONENT24)));
+	
+	//first_camera_->getOrCreateStateSet()->setAttributeAndModes(ms_fbo_, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+	//first_camera_->getOrCreateStateSet()->setAttributeAndModes(normal_fbo_, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
 	osg::Camera* mainCamera = view->getCamera();
-	first_fbo_->setProjectionMatrix(mainCamera->getProjectionMatrix());
-	first_fbo_->setViewMatrix(mainCamera->getViewMatrix());
-	first_fbo_->addPreDrawCallback(new FirstCameraPredrawCallback(mainCamera, this));
-	first_fbo_->addPostDrawCallback(new FirstCameraPosdrawCallback(mainCamera, this));	
+	first_camera_->setProjectionMatrix(mainCamera->getProjectionMatrix());
+	first_camera_->setViewMatrix(mainCamera->getViewMatrix());
+	first_camera_->addPreDrawCallback(new FirstCameraPredrawCallback(mainCamera, this));
+	first_camera_->addPostDrawCallback(new FirstCameraPosdrawCallback(mainCamera, this));
 }
 
 void HighlightSystem::Impl::create_secend_fbo()
 {
-	second_fbo_ = new osg::Camera;
-	second_fbo_->setName("second_fbo_");
-	second_fbo_->addDescription("获取轮廓");
+	second_camera_ = new osg::Camera;
+	second_camera_->setName("second_fbo_");
+	second_camera_->addDescription("获取轮廓");
 	osg::Geometry* quat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(TEXTURE_SIZE1, 0, 0), osg::Vec3(0, TEXTURE_SIZE2, 0));
 	{
-		second_fbo_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-		second_fbo_->setProjectionMatrixAsOrtho2D(0, TEXTURE_SIZE1, 0, TEXTURE_SIZE2);
-		second_fbo_->setViewMatrix(osg::Matrix::identity());
-		second_fbo_->setRenderOrder(osg::Camera::PRE_RENDER);
-		second_fbo_->setClearColor(osg::Vec4());
-		second_fbo_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		second_fbo_->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-		second_fbo_->getOrCreateStateSet()->setMode(GL_LIGHTING,
-													osg::StateAttribute::OFF);
-		second_fbo_->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
+		second_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+		second_camera_->setProjectionMatrixAsOrtho2D(0, TEXTURE_SIZE1, 0, TEXTURE_SIZE2);
+		second_camera_->setViewMatrix(osg::Matrix::identity());
+		second_camera_->setRenderOrder(osg::Camera::PRE_RENDER);
+		second_camera_->setClearColor(osg::Vec4());
+		second_camera_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		second_camera_->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+		second_camera_->getOrCreateStateSet()->setMode(GL_LIGHTING,
+													   osg::StateAttribute::OFF);
+		second_camera_->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
 		// attach the texture and use it as the color buffer.
-		second_fbo_->attach(osg::Camera::COLOR_BUFFER, second_texture_,
-							0, 0, false);
+		second_camera_->attach(osg::Camera::COLOR_BUFFER, second_texture_,
+							   0, 0, false);
 
 		osg::Geode* geode = new osg::Geode;
-		second_fbo_->addChild(geode);
+		second_camera_->addChild(geode);
 		geode->addChild(quat);
 		//geode->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 		//geode->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
@@ -301,8 +302,8 @@ void HighlightSystem::Impl::create_blur_fbo()
 
 	for (int i = 0; i < PING_PONG_NUM; i++)
 	{
-		pingpong_fbo_[i] = new osg::Camera;
-		osg::Camera* fbo = pingpong_fbo_[i];
+		pingpong_camera_[i] = new osg::Camera;
+		osg::Camera* fbo	= pingpong_camera_[i];
 
 		osg::Geometry* screenQuat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(TEXTURE_SIZE1, 0, 0), osg::Vec3(0, TEXTURE_SIZE2, 0));
 		{
@@ -343,7 +344,7 @@ void HighlightSystem::Impl::create_blur_fbo()
 			ss->setTextureAttributeAndModes(0, i % 2 == 0 ? second_texture_ : first_texture_, osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;
-			osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir()  + "/blur.vert");
+			osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/blur.vert");
 			osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/blur.frag");
 			program->addShader(vert);
 			program->addShader(frag);
@@ -405,45 +406,45 @@ void HighlightSystem::Impl::start()
 
 	std::vector<osg::ref_ptr<osg::Node>> currentSelected;
 
-	if (first_fbo_)
+	if (first_camera_)
 	{
-		for (int i = 0; i < first_fbo_->getNumChildren(); i++)
+		for (int i = 0; i < first_camera_->getNumChildren(); i++)
 		{
-			currentSelected.push_back(first_fbo_->getChild(i));
+			currentSelected.push_back(first_camera_->getChild(i));
 		}
 	}
 
 	highlightRoot_->removeChildren(0, highlightRoot_->getNumChildren());
 	set_pingpong_texture();
 
-	create_first_fbo();
+	create_first_camera();
 	create_secend_fbo();
 	create_blur_fbo();
 	create_hud(second_texture_);
 
-	highlightRoot_->addChild(first_fbo_);
-	highlightRoot_->addChild(second_fbo_);
+	highlightRoot_->addChild(first_camera_);
+	highlightRoot_->addChild(second_camera_);
 
 	for (int i = 0; i < PING_PONG_NUM; i++)
-		highlightRoot_->addChild(pingpong_fbo_[i]);
+		highlightRoot_->addChild(pingpong_camera_[i]);
 
 	highlightRoot_->addChild(hud_camera_);
 
 	for (auto& n : currentSelected)
 	{
-		first_fbo_->addChild(n);
+		first_camera_->addChild(n);
 	}
 }
 
 //--------------------------HighlightSystem------------------------
 HighlightSystem::HighlightSystem(osgViewer::View* pOSG)
 {
-	impl		= new Impl;
+	impl	   = new Impl;
 	impl->view = pOSG;
 	//impl->pOSG_ = pOSG;
 	pOSG->getSceneData()->asGroup()->addChild(impl->highlightRoot_);
 	impl->highlightRoot_->setNodeMask(0);
-				   
+
 	//pOSG->addCommand(new DbCommandFunction(
 	//	[this]() {
 	//		impl->start();
@@ -462,7 +463,7 @@ void HighlightSystem::addHighlight(osg::Node* pNode)
 
 	if (isHighlight(pNode)) return;
 
-	impl->first_fbo_->addChild(pNode);
+	impl->first_camera_->addChild(pNode);
 }
 
 void HighlightSystem::removeHighlight(osg::Node* pNode)
@@ -470,9 +471,9 @@ void HighlightSystem::removeHighlight(osg::Node* pNode)
 	if (!impl->is_enable) return;
 
 	if (!isHighlight(pNode)) return;
-	impl->first_fbo_->removeChild(pNode);
+	impl->first_camera_->removeChild(pNode);
 
-	if (impl->first_fbo_->getNumChildren() == 0)
+	if (impl->first_camera_->getNumChildren() == 0)
 	{
 		impl->highlightRoot_->setNodeMask(0);
 	}
@@ -480,7 +481,7 @@ void HighlightSystem::removeHighlight(osg::Node* pNode)
 
 bool HighlightSystem::isHighlight(osg::Node* pNode)
 {
-	return impl->first_fbo_->containsNode(pNode);
+	return impl->first_camera_->containsNode(pNode);
 }
 
 void HighlightSystem::enable(bool flag)
@@ -495,17 +496,17 @@ void HighlightSystem::enable(bool flag)
 
 void HighlightSystem::updateViewmatrix(const osg::Matrixd& mat)
 {
-	if (impl->first_fbo_) impl->first_fbo_->setViewMatrix(mat);
+	if (impl->first_camera_) impl->first_camera_->setViewMatrix(mat);
 }
 
 void HighlightSystem::updateProjectionMatrix(const osg::Matrixd& mat)
 {
-	if (impl->first_fbo_) impl->first_fbo_->setProjectionMatrix(mat);
+	if (impl->first_camera_) impl->first_camera_->setProjectionMatrix(mat);
 }
 
 void HighlightSystem::setColor(const osg::Vec4& color)
 {
-	impl->u_color = osg::Vec3(color[0], color[1], color[2]);
+	impl->u_color		 = osg::Vec3(color[0], color[1], color[2]);
 	impl->u_alpha_factor = color.z();
 }
 
