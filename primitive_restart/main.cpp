@@ -4,19 +4,20 @@
 #include "pch.h"
 #include "../common/common.h"
 
+
 //------------------------------------------------------------------------------------------
 
-class UpdateSelecteUniform : public osg::Uniform::Callback
+class UpdateLODUniform : public osg::Uniform::Callback
 {
 public:
 
 	void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
 	{
-		uniform->set(_selected);
+		uniform->set(_lod);
 		//cout << "select index " << _selected << endl;
 	}
 
-	int _selected;
+	int _lod;
 };
 
 
@@ -35,7 +36,7 @@ private:
 	osg::Camera * mCamera;
 };
 
-osg::ref_ptr<UpdateSelecteUniform> u_updateSelecteUniform = new UpdateSelecteUniform;
+osg::ref_ptr<UpdateLODUniform> u_updateLODUniform = new UpdateLODUniform;
 
 //https://blog.csdn.net/qq_16123279/article/details/82463266
 
@@ -118,7 +119,7 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 colo
 
 	//-----------uniform
 	osg::Uniform* u_selected_index(new osg::Uniform("u_selected_index", -1));
-	u_selected_index->setUpdateCallback(u_updateSelecteUniform);
+	u_selected_index->setUpdateCallback(u_updateLODUniform);
 	stateset->addUniform(u_selected_index);
 
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
@@ -136,7 +137,7 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 
 	for (int j = 0; j < 2; j++)
 	{
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < 1e7; i++)
 		{
 			PTs.push_back(osg::Vec3d(i * 10, 0, 0));
 
