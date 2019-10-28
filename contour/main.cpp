@@ -166,6 +166,7 @@ class PickHandler : public osgGA::GUIEventHandler
 				g_scene->removeChildren(0, g_scene->getNumChildren());
 				osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 				osg::Geometry* n = createLine2(g_cpv.resultPts_, osg::Vec4(1, 0, 0, 1), view->getCamera(), false);
+				n->setCullingActive(false);
 				geode->addDrawable(n);
 				g_scene->addChild(geode); break;
 			}
@@ -174,6 +175,7 @@ class PickHandler : public osgGA::GUIEventHandler
 				g_scene->removeChildren(0, g_scene->getNumChildren());
 				osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 				osg::Geometry* n = createLine2(g_cpv.resultPts_, osg::Vec4(1, 0, 0, 1), view->getCamera(), true);
+				n->setCullingActive(false);
 				geode->addDrawable(n);
 				g_scene->addChild(geode); break;
 			}
@@ -218,11 +220,10 @@ int main()
 {
 	osgViewer::Viewer view;
 
-	g_contour = osgDB::readNodeFile("E:\\FileRecv\\morelines.shp");
+	g_contour = osgDB::readNodeFile("morelines.shp");
 	g_contour->accept(g_cpv);
-
 	g_scene->setComputeBoundingSphereCallback(new ComputeBoundingSphereCallback);
-
+	
 	g_root->addChild(g_scene);
 	view.setSceneData(g_root);
 	add_event_handler(view);

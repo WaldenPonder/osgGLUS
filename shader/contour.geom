@@ -14,14 +14,14 @@ void main()
         EndPrimitive();
         return;
     } */
-    //if(gs_in[0].vertexID % 3 == 0)
+    if(gs_in[0].vertexID % 2 == 0)
     {
         gl_Position = gl_in[0].gl_Position; 
         EmitVertex(); 
         
         //gl_Position = gl_in[0].gl_Position; 
         EmitVertex();
-        //EndPrimitive();
+        EndPrimitive();
     }
 
     //if((gs_in[0].vertexID + 1) % 3 != 0)
