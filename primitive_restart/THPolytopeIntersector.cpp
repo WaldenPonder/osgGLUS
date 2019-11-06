@@ -315,12 +315,14 @@ namespace THPolytopeIntersectorUtils
 
 			if (is_equal_negative_one(v0) || is_equal_negative_one(v1))
 			{
+				++_primitiveIndex;
 			}
-			else if (contains())
+			else
 			{
-				addIntersection();
+				if (contains())
+					addIntersection();
+				++_primitiveIndex;
 			}
-			++_primitiveIndex;
 		}
 
 		// handle triangles
@@ -429,7 +431,7 @@ namespace THPolytopeIntersectorUtils
 		}
 	};
 
-}  // namespace  PolytopeIntersectorUtils
+}  // namespace THPolytopeIntersectorUtils
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -547,11 +549,11 @@ void THPolytopeIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Dra
 	if (!_polytope.contains(drawable->getBoundingBox())) return;
 
 	osg::ref_ptr<THPolytopeIntersectorUtils::Settings> settings = new THPolytopeIntersectorUtils::Settings;
-	settings->_polytopeIntersector							  = this;
-	settings->_iv											  = &iv;
-	settings->_drawable										  = drawable;
-	settings->_limitOneIntersection							  = (_intersectionLimit == LIMIT_ONE_PER_DRAWABLE || _intersectionLimit == LIMIT_ONE);
-	settings->_primitiveMask								  = _primitiveMask;
+	settings->_polytopeIntersector								= this;
+	settings->_iv												= &iv;
+	settings->_drawable											= drawable;
+	settings->_limitOneIntersection								= (_intersectionLimit == LIMIT_ONE_PER_DRAWABLE || _intersectionLimit == LIMIT_ONE);
+	settings->_primitiveMask									= _primitiveMask;
 
 	THKdTree* kdTree = iv.getUseKdTreeWhenAvailable() ? dynamic_cast<THKdTree*>(drawable->getShape()) : 0;
 

@@ -91,13 +91,18 @@ struct PrimitiveIndicesCollector
             _buildKdTree->_kdTree._degenerateCount++;
             return;
         }
-
-        _buildKdTree->_kdTree.addLine(p0,p1);
+		 
 
         osg::BoundingBox bb;
 
 		if (is_equal_negative_one(v0) || is_equal_negative_one(v1))
 		{
+			_buildKdTree->_kdTree._degenerateCount++;
+		}
+		else 
+		{
+			_buildKdTree->_kdTree.addLine(p0, p1);
+
 			bb.expandBy(v0);
 			bb.expandBy(v1);
 
@@ -303,7 +308,8 @@ int BuildKdTree::divide(THKdTree::BuildOptions& options, osg::BoundingBox& bb, i
                 {
                     unsigned int vi = _kdTree.getVertexIndices()[primitiveIndex++];
                     const osg::Vec3& v = (*_kdTree.getVertices())[vi];
-                    node.bb.expandBy(v);
+					if(!is_equal_negative_one(v))
+                       node.bb.expandBy(v);
                 }
             }
 

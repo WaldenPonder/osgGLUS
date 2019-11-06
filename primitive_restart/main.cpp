@@ -137,25 +137,43 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	for (int k = 0; k < 1000; k++)
+	for (int k = 0; k < 1; k++)
 	{
 		float z = k * 10 + 100;
-		for (int j = 0; j < 100; j++)
+		for (int j = 0; j < 10; j++)
 		{
-			for (int i = 0; i < 100; i++)
+			for (int i = 0; i < j + 2; i++)
 			{
 				PTs.push_back(osg::Vec3d(i * 10, 0, z));
 
 				if (i % 4 < 2)
-					PTs.back() += osg::Vec3(0, 100, z);
+					PTs.back() += osg::Vec3(0, 200, z);
 
 				PTs.back() += osg::Vec3(0, j * 150, z);
 			}
 			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
-			//cout << "SIZE " << PTs.size() << endl;
+			cout << "SIZE " << PTs.size() << endl;
 		}
 	}
 
+	for (int k = 0; k < 1; k++)
+	{
+		float z = k * 10 + 200;
+		for (int j = 0; j < 10; j++)
+		{
+			for (int i = 0; i < 10 - j + 2; i++)
+			{
+				PTs.push_back(osg::Vec3d(i * 10, 0, z));
+
+				if (i % 4 < 2)
+					PTs.back() += osg::Vec3(0, 200, z);
+
+				PTs.back() += osg::Vec3(0, j * 150, z);
+			}
+			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
+			cout << "SIZE " << PTs.size() << endl;
+		}
+	}
 
 	osg::Geometry* n = createLine2(PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
 	geode->addDrawable(n);
