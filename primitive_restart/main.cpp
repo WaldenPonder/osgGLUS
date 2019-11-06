@@ -4,6 +4,8 @@
 #include "pch.h"
 #include "../common/common.h"
 #include <osg/io_utils>
+#include <osg/KdTree>
+
 //------------------------------------------------------------------------------------------
 
 class UpdateSelecteUniform : public osg::Uniform::Callback
@@ -134,7 +136,7 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	for (int j = 0; j < 2; j++)
+	for (int j = 0; j < 10; j++)
 	{
 		for (int i = 0; i < 100; i++)
 		{
@@ -146,6 +148,7 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 			PTs.back() += osg::Vec3(0, j * 150, 0);
 		}
 		PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
+		cout << "SIZE " << PTs.size() << endl;
 	}
 
 	osg::Geometry* n = createLine2(PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
@@ -276,12 +279,8 @@ public:
 			{
 				osgUtil::PolytopeIntersector::Intersection intersection = picker->getFirstIntersection();
 
-				osg::notify(osg::NOTICE) << "Picked " << intersection.localIntersectionPoint << std::endl
-					<< "  Distance to ref. plane " << intersection.distance
-					<< ", max. dist " << intersection.maxDistance
+				osg::notify(osg::NOTICE) << "Picked " << intersection.localIntersectionPoint << std::endl	
 					<< ", primitive index " << intersection.primitiveIndex
-					<< ", numIntersectionPoints "
-					<< intersection.numIntersectionPoints
 					<< std::endl;
 
 				osg::NodePath& nodePath = intersection.nodePath;
@@ -349,9 +348,34 @@ protected:
 
 };
 
+struct inter
+{
+	virtual void getAA() = 0;
+};
+
+class AA 
+{
+public:
+	virtual void f() { cout << "ff"; }
+};
+
+class BB : public AA, public inter
+{
+public:
+
+	virtual void getAA() { cout << "BB" << endl; }
+};
+
 
 int main()
 {
+	BB* b = new BB;
+	AA* a = b;
+	inter* i = dynamic_cast<inter*>(a);
+	i->getAA();
+
+	getchar();
+
 	osg::Node* n;
 	
 	osgViewer::Viewer view;
@@ -359,6 +383,9 @@ int main()
 	osg::Group* root = new osg::Group;
 	//root->addChild(osgDB::readNodeFile("cow.osg"));
 	root->addChild(create_lines(view));
+
+	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
+	root->accept(*kdBuild);
 
 	view.setSceneData(root);
 	add_event_handler(view);

@@ -10,7 +10,28 @@
 #define NM_NO_SHOW 1
 #define NM_NO_PICK 2
 
-osg::Switch*			 g_root   = new osg::Switch;
+
+class CustomGroup : public osg::Group
+{
+public:
+	virtual void traverse(osg::NodeVisitor& nv)
+	{
+		if (nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR)
+		{
+			cout << "n" << endl;
+		}
+
+		if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+			// || nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR)
+		{
+			return;
+		}
+
+		return osg::Group::traverse(nv);
+	}
+};
+
+osg::ref_ptr<osg::Group>		 g_root   = new osg::Group;
 osg::ref_ptr<osg::Group> g_scene  = new osg::Group;
 osg::Camera*			 g_camera = nullptr;
 osg::ref_ptr<osg::Node>  g_contour;
@@ -173,16 +194,42 @@ class PickHandler : public osgGA::GUIEventHandler
 	}
 };
 
+
 int main()
 {
+	vector<osg::Vec3> pts;
+	set<osg::Vec3> pts2;
+	//pts.resize(1e6);
+
+	clock_t t = clock();
+	for (int i = 0; i < 1e7; i++)
+	{
+		pts.push_back(osg::Vec3(i, i, i));
+		//pts[i] = ();
+	}
+
+	cout <<  "AAA   " << (clock() - t) << "\t" << pts.size() << std::endl;
+	t = clock();
+
+	for (auto& p : pts)
+	{
+		pts2.insert(p);
+	}
+
+	cout << "BBB   " << (clock() - t) << "\t" << pts2.size() << std::endl;
+
+	getchar();
+
 	osgViewer::Viewer view;
 
-	//g_contour = osgDB::readNodeFile("E:\\FileRecv\\xx8.shp");
-	g_contour = osgDB::readNodeFile("E:\\FileRecv\\morelines.shp");
+	CustomGroup* grp = new CustomGroup;
+	g_contour = osgDB::readNodeFile("E:\\FileRecv\\xx8.shp");
+	grp->addChild(g_contour);
+	//g_contour = osgDB::readNodeFile("E:\\FileRecv\\morelines.shp");
 
 	g_contour->accept(g_cpv);
-	g_contour->setNodeMask(NM_NO_SHOW);
-	g_root->addChild(g_contour);
+	//g_contour->setNodeMask(NM_NO_SHOW);
+	g_root->addChild(grp);
 
 	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
 	g_contour->accept(*kdBuild);
