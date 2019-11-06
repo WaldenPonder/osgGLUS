@@ -7,6 +7,8 @@
 #include <osg/KdTree>
 #include "THPolytopeIntersector.h"
 #include "THKdTree.h"
+
+vector<int> g_index;
 //------------------------------------------------------------------------------------------
 
 class UpdateSelecteUniform : public osg::Uniform::Callback
@@ -137,40 +139,29 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	for (int k = 0; k < 1; k++)
+	
+	for (int k = 0; k < 5; k++)
 	{
-		float z = k * 10 + 100;
+		float z = 0;
 		for (int j = 0; j < 10; j++)
 		{
 			for (int i = 0; i < j + 2; i++)
 			{
-				PTs.push_back(osg::Vec3d(i * 10, 0, z));
-
-				if (i % 4 < 2)
-					PTs.back() += osg::Vec3(0, 200, z);
-
-				PTs.back() += osg::Vec3(0, j * 150, z);
+				PTs.push_back(osg::Vec3(i * 10, j * 10, 0));
 			}
 			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
+			g_index.push_back(PTs.size());
 			cout << "SIZE " << PTs.size() << endl;
 		}
-	}
 
-	for (int k = 0; k < 1; k++)
-	{
-		float z = k * 10 + 200;
 		for (int j = 0; j < 10; j++)
 		{
 			for (int i = 0; i < 10 - j + 2; i++)
 			{
-				PTs.push_back(osg::Vec3d(i * 10, 0, z));
-
-				if (i % 4 < 2)
-					PTs.back() += osg::Vec3(0, 200, z);
-
-				PTs.back() += osg::Vec3(0, j * 150, z);
+				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 * k + 100));
 			}
 			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
+			g_index.push_back(PTs.size());
 			cout << "SIZE " << PTs.size() << endl;
 		}
 	}
@@ -303,12 +294,20 @@ public:
 			{
 				for (THPolytopeIntersector::Intersection intersection : picker->getIntersections())
 				{
-					osg::notify(osg::NOTICE)	<< "primitive index " << intersection.primitiveIndex
-						<< std::endl;
+					//cout	<< "pre_index " << intersection.primitiveIndex
+					//	<< std::endl;
 
 					osg::NodePath& nodePath = intersection.nodePath;
 					node = (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
 					parent = (nodePath.size() >= 2) ? dynamic_cast<osg::Group*>(nodePath[nodePath.size() - 2]) : 0;
+
+					for (int i = 0; i < g_index.size(); i++)
+					{
+						if (intersection.primitiveIndex + 2 < g_index[i])
+						{
+							cout << "i " << i << endl; break;
+						}
+					}
 				}
 				
 				//if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
