@@ -172,30 +172,31 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 
 	osg::ref_ptr<osg::MultiDrawArrays>	multidraw = new osg::MultiDrawArrays(osg::PrimitiveSet::LINE_STRIP);
 
-	for (int k = 0; k < 50; k++)
+	for (int k = 0; k < 500; k++)
 	{
 		float z = 0;
 		for (int j = 0; j < 1000; j++)
 		{
 			int preIndex = PTs.size();
-			for (int i = 0; i < j + 2; i++)
+			for (int i = 0; i < 10; i++)
 			{
-				PTs.push_back(osg::Vec3(i * 10, j * 10, 0));
+				PTs.push_back(osg::Vec3(i * 10, j * 10, 50 * k));
 			}
 			
 			multidraw->add(preIndex, PTs.size() - preIndex);
+			g_index.push_back(PTs.size());
 			//cout << "SIZE " << PTs.size() << endl;
 		}
 
 		for (int j = 0; j < 1000; j++)
 		{
 			int preIndex = PTs.size();
-			for (int i = 0; i < 10 - j + 2; i++)
+			for (int i = 0; i < 10 + 2; i++)
 			{
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 * k + 100));
 			}
 			multidraw->add(preIndex, PTs.size() - preIndex);
-			
+			g_index.push_back(PTs.size());
 			//cout << "SIZE " << PTs.size() << endl;
 		}
 	}
@@ -374,7 +375,7 @@ int main()
 	root->addChild(create_lines(view));
 
 	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
-	//root->accept(*kdBuild);
+	root->accept(*kdBuild);
 
 	view.setSceneData(root);
 	add_event_handler(view);
