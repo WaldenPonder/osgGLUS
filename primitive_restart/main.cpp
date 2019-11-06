@@ -5,7 +5,8 @@
 #include "../common/common.h"
 #include <osg/io_utils>
 #include <osg/KdTree>
-
+#include "THPolytopeIntersector.h"
+#include "THKdTree.h"
 //------------------------------------------------------------------------------------------
 
 class UpdateSelecteUniform : public osg::Uniform::Callback
@@ -136,20 +137,25 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	for (int j = 0; j < 10; j++)
+	for (int k = 0; k < 1000; k++)
 	{
-		for (int i = 0; i < 100; i++)
+		float z = k * 10 + 100;
+		for (int j = 0; j < 100; j++)
 		{
-			PTs.push_back(osg::Vec3d(i * 10, 0, 0));
+			for (int i = 0; i < 100; i++)
+			{
+				PTs.push_back(osg::Vec3d(i * 10, 0, z));
 
-			if (i % 4 < 2)
-				PTs.back() += osg::Vec3(0, 50, 0);
+				if (i % 4 < 2)
+					PTs.back() += osg::Vec3(0, 100, z);
 
-			PTs.back() += osg::Vec3(0, j * 150, 0);
+				PTs.back() += osg::Vec3(0, j * 150, z);
+			}
+			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
+			//cout << "SIZE " << PTs.size() << endl;
 		}
-		PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
-		cout << "SIZE " << PTs.size() << endl;
 	}
+
 
 	osg::Geometry* n = createLine2(PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
 	geode->addDrawable(n);
@@ -242,8 +248,8 @@ public:
 		
 		if (_usePolytopeIntersector)
 		{
-			osgUtil::PolytopeIntersector* picker;
-			if (_useWindowCoordinates)
+			THPolytopeIntersector* picker;
+			if (0)
 			{
 				// use window coordinates
 				// remap the mouse x,y into viewport coordinates.
@@ -254,14 +260,14 @@ public:
 				// half width, height.
 				double w = 5.0f;
 				double h = 5.0f;
-				picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, mx - w, my - h, mx + w, my + h);
+				picker = new THPolytopeIntersector(osgUtil::Intersector::WINDOW, mx - w, my - h, mx + w, my + h);
 			}
 			else {
 				double mx = ea.getXnormalized();
 				double my = ea.getYnormalized();
 				double w = 0.05;
 				double h = 0.05;
-				picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::PROJECTION, mx - w, my - h, mx + w, my + h);
+				picker = new THPolytopeIntersector(osgUtil::Intersector::PROJECTION, mx - w, my - h, mx + w, my + h);
 			}
 
 			picker->setPrecisionHint(_precisionHint);
@@ -277,17 +283,17 @@ public:
 
 			if (picker->containsIntersections())
 			{
-				osgUtil::PolytopeIntersector::Intersection intersection = picker->getFirstIntersection();
+				for (THPolytopeIntersector::Intersection intersection : picker->getIntersections())
+				{
+					osg::notify(osg::NOTICE)	<< "primitive index " << intersection.primitiveIndex
+						<< std::endl;
 
-				osg::notify(osg::NOTICE) << "Picked " << intersection.localIntersectionPoint << std::endl	
-					<< ", primitive index " << intersection.primitiveIndex
-					<< std::endl;
-
-				osg::NodePath& nodePath = intersection.nodePath;
-				node = (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
-				parent = (nodePath.size() >= 2) ? dynamic_cast<osg::Group*>(nodePath[nodePath.size() - 2]) : 0;
-
-				if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
+					osg::NodePath& nodePath = intersection.nodePath;
+					node = (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
+					parent = (nodePath.size() >= 2) ? dynamic_cast<osg::Group*>(nodePath[nodePath.size() - 2]) : 0;
+				}
+				
+				//if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
 			}
 
 		}
@@ -348,43 +354,15 @@ protected:
 
 };
 
-struct inter
-{
-	virtual void getAA() = 0;
-};
-
-class AA 
-{
-public:
-	virtual void f() { cout << "ff"; }
-};
-
-class BB : public AA, public inter
-{
-public:
-
-	virtual void getAA() { cout << "BB" << endl; }
-};
-
-
 int main()
 {
-	BB* b = new BB;
-	AA* a = b;
-	inter* i = dynamic_cast<inter*>(a);
-	i->getAA();
-
-	getchar();
-
-	osg::Node* n;
-	
 	osgViewer::Viewer view;
 
 	osg::Group* root = new osg::Group;
 	//root->addChild(osgDB::readNodeFile("cow.osg"));
 	root->addChild(create_lines(view));
 
-	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
+	osg::ref_ptr<THKdTreeBuilder> kdBuild = new THKdTreeBuilder;
 	root->accept(*kdBuild);
 
 	view.setSceneData(root);
