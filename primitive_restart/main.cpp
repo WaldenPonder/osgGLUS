@@ -171,33 +171,36 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	vector<osg::Vec3d>		 PTs;
 
 	osg::ref_ptr<osg::MultiDrawArrays>	multidraw = new osg::MultiDrawArrays(osg::PrimitiveSet::LINE_STRIP);
-
-	for (int k = 0; k < 500; k++)
+	int COUNT = 0;
+	for (int k = 0; k < 1; k++)
 	{
 		float z = 0;
-		for (int j = 0; j < 1000; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			int preIndex = PTs.size();
 			for (int i = 0; i < 10; i++)
 			{
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 50 * k));
 			}
-			
+			PTs.push_back(PTs.back());
 			multidraw->add(preIndex, PTs.size() - preIndex);
+		
 			g_index.push_back(PTs.size());
-			//cout << "SIZE " << PTs.size() << endl;
+			cout << "SIZE " << g_index.back() << endl;
 		}
 
-		for (int j = 0; j < 1000; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			int preIndex = PTs.size();
-			for (int i = 0; i < 10 + 2; i++)
+			for (int i = 0; i < 10; i++)
 			{
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 * k + 100));
 			}
+			PTs.push_back(PTs.back());
 			multidraw->add(preIndex, PTs.size() - preIndex);
-			g_index.push_back(PTs.size());
-			//cout << "SIZE " << PTs.size() << endl;
+			
+			g_index.push_back(PTs.size() + COUNT);
+			cout << "SIZE " << g_index.back() << endl;
 		}
 	}
 
@@ -329,8 +332,8 @@ public:
 			{
 				for (osgUtil::PolytopeIntersector::Intersection intersection : picker->getIntersections())
 				{
-					//cout	<< "pre_index " << intersection.primitiveIndex
-					//	<< std::endl;
+					cout	<< "pre_index " << intersection.primitiveIndex
+						<< std::endl;
 
 					osg::NodePath& nodePath = intersection.nodePath;
 					node = (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
@@ -340,7 +343,7 @@ public:
 					{
 						if (intersection.primitiveIndex + 2 < g_index[i])
 						{
-							cout << "i " << i << endl; break;
+							//cout << "i " << i << endl; break;
 						}
 					}
 				}
