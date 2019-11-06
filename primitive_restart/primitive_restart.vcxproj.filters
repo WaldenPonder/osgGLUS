@@ -18,24 +18,12 @@
     <ClInclude Include="pch.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="THPolytopeIntersector.h">
-      <Filter>源文件</Filter>
-    </ClInclude>
-    <ClInclude Include="THKdTree.h">
-      <Filter>源文件</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="THPolytopeIntersector.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="THKdTree.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -56,7 +56,7 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 colo
 	osg::ref_ptr<osg::Geometry> pGeometry = new osg::Geometry();
 
 	osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array;
-	//pGeometry->setVertexArray(verts.get());
+	
 	for (int i = 0; i < allPTs.size(); i++)
 	{
 		verts->push_back(allPTs[i]);
@@ -134,39 +134,73 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 colo
 }
 
 
+osg::Geometry* createLine3(osg::MultiDrawArrays* draw, const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::Camera* camera)
+{
+	int nCount = allPTs.size();
+
+	osg::ref_ptr<osg::Geometry> pGeometry = new osg::Geometry();
+
+	osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array;
+
+	for (int i = 0; i < allPTs.size(); i++)
+	{
+		verts->push_back(allPTs[i]);
+	}
+
+	pGeometry->addPrimitiveSet(draw);
+	pGeometry->setUseVertexBufferObjects(true); //不启用VBO的话，图元重启没效果
+
+	osg::StateSet* stateset = pGeometry->getOrCreateStateSet();
+	stateset->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
+	stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+
+	pGeometry->setVertexArray(verts);
+	pGeometry->setVertexAttribArray(0, verts, osg::Array::BIND_PER_VERTEX);
+	pGeometry->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
+
+	osg::Vec4Array* colours = new osg::Vec4Array(1);
+	pGeometry->setColorArray(colours, osg::Array::BIND_OVERALL);
+	(*colours)[0].set(1.0f, .0f, .0f, 1.0f);
+
+	return pGeometry.release();
+}
+
 osg::Node* create_lines(osgViewer::Viewer& view)
 {
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	
-	for (int k = 0; k < 5; k++)
+	osg::ref_ptr<osg::MultiDrawArrays>	multidraw = new osg::MultiDrawArrays(osg::PrimitiveSet::LINE_STRIP);
+
+	for (int k = 0; k < 50; k++)
 	{
 		float z = 0;
-		for (int j = 0; j < 10; j++)
+		for (int j = 0; j < 1000; j++)
 		{
+			int preIndex = PTs.size();
 			for (int i = 0; i < j + 2; i++)
 			{
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 0));
 			}
-			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
-			g_index.push_back(PTs.size());
-			cout << "SIZE " << PTs.size() << endl;
+			
+			multidraw->add(preIndex, PTs.size() - preIndex);
+			//cout << "SIZE " << PTs.size() << endl;
 		}
 
-		for (int j = 0; j < 10; j++)
+		for (int j = 0; j < 1000; j++)
 		{
+			int preIndex = PTs.size();
 			for (int i = 0; i < 10 - j + 2; i++)
 			{
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 * k + 100));
 			}
-			PTs.push_back(osg::Vec3(-1, -1, -1));  //这个点不会显示，但OSG计算包围盒的时候还是会考虑它
-			g_index.push_back(PTs.size());
-			cout << "SIZE " << PTs.size() << endl;
+			multidraw->add(preIndex, PTs.size() - preIndex);
+			
+			//cout << "SIZE " << PTs.size() << endl;
 		}
 	}
 
-	osg::Geometry* n = createLine2(PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
+	osg::Geometry* n = createLine3(multidraw, PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
 	geode->addDrawable(n);
 
 	return geode.release();
@@ -257,7 +291,7 @@ public:
 		
 		if (_usePolytopeIntersector)
 		{
-			THPolytopeIntersector* picker;
+			osgUtil::PolytopeIntersector* picker;
 			if (0)
 			{
 				// use window coordinates
@@ -269,14 +303,14 @@ public:
 				// half width, height.
 				double w = 5.0f;
 				double h = 5.0f;
-				picker = new THPolytopeIntersector(osgUtil::Intersector::WINDOW, mx - w, my - h, mx + w, my + h);
+				picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, mx - w, my - h, mx + w, my + h);
 			}
 			else {
 				double mx = ea.getXnormalized();
 				double my = ea.getYnormalized();
 				double w = 0.05;
 				double h = 0.05;
-				picker = new THPolytopeIntersector(osgUtil::Intersector::PROJECTION, mx - w, my - h, mx + w, my + h);
+				picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::PROJECTION, mx - w, my - h, mx + w, my + h);
 			}
 
 			picker->setPrecisionHint(_precisionHint);
@@ -292,7 +326,7 @@ public:
 
 			if (picker->containsIntersections())
 			{
-				for (THPolytopeIntersector::Intersection intersection : picker->getIntersections())
+				for (osgUtil::PolytopeIntersector::Intersection intersection : picker->getIntersections())
 				{
 					//cout	<< "pre_index " << intersection.primitiveIndex
 					//	<< std::endl;
@@ -314,47 +348,7 @@ public:
 			}
 
 		}
-		else
-		{
-			osgUtil::LineSegmentIntersector* picker;
-			if (!_useWindowCoordinates)
-			{
-				// use non dimensional coordinates - in projection/clip space
-				picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::PROJECTION, ea.getXnormalized(), ea.getYnormalized());
-			}
-			else {
-				// use window coordinates
-				// remap the mouse x,y into viewport coordinates.
-				osg::Viewport* viewport = viewer->getCamera()->getViewport();
-				float mx = viewport->x() + (int)((float)viewport->width()*(ea.getXnormalized()*0.5f + 0.5f));
-				float my = viewport->y() + (int)((float)viewport->height()*(ea.getYnormalized()*0.5f + 0.5f));
-				picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::WINDOW, mx, my);
-			}
-			picker->setPrecisionHint(_precisionHint);
-
-			osgUtil::IntersectionVisitor iv(picker);
-
-			osg::ElapsedTime elapsedTime;
-
-			viewer->getCamera()->accept(iv);
-
-			//OSG_NOTICE << "LineSegmentIntersector traversal took " << elapsedTime.elapsedTime_m() << "ms" << std::endl;
-
-			if (picker->containsIntersections())
-			{
-				osgUtil::LineSegmentIntersector::Intersection intersection = picker->getFirstIntersection();
-				cout << "Picked " << intersection.localIntersectionPoint << std::endl
-					<< "  primitive index " << intersection.primitiveIndex
-					<< std::endl;
-
-				osg::NodePath& nodePath = intersection.nodePath;
-				node = (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
-				parent = (nodePath.size() >= 2) ? dynamic_cast<osg::Group*>(nodePath[nodePath.size() - 2]) : 0;
-
-				//if (node) std::cout << "  Hits " << node->className() << " nodePath size" << nodePath.size() << std::endl;
-			}
-		}
-
+	
 		// now we try to decorate the hit node by the osgFX::Scribe to show that its been "picked"
 	}
 
@@ -379,8 +373,8 @@ int main()
 	//root->addChild(osgDB::readNodeFile("cow.osg"));
 	root->addChild(create_lines(view));
 
-	osg::ref_ptr<THKdTreeBuilder> kdBuild = new THKdTreeBuilder;
-	root->accept(*kdBuild);
+	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
+	//root->accept(*kdBuild);
 
 	view.setSceneData(root);
 	add_event_handler(view);

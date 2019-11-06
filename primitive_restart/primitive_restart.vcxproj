@@ -156,12 +156,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="THKdTree.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="THPolytopeIntersector.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="THKdTree.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -169,7 +166,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="THPolytopeIntersector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\line_stripe.frag" />
