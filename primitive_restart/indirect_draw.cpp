@@ -5,139 +5,13 @@
 #include "../common/common.h"
 #include <osg/io_utils>
 #include <osg/KdTree>
-#include "THPolytopeIntersector.h"
-#include "THKdTree.h"
+#include <osg/PrimitiveSetIndirect>
+
+osg::ref_ptr<osg::DefaultIndirectCommandDrawArrays> g_indirectCommands = new osg::DefaultIndirectCommandDrawArrays;
 
 vector<int> g_index;
-//------------------------------------------------------------------------------------------
-#if 0
 
-class UpdateSelecteUniform : public osg::Uniform::Callback
-{
-public:
-
-	void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
-	{
-		uniform->set(_selected);
-		//cout << "select index " << _selected << endl;
-	}
-
-	int _selected;
-};
-
-
-class MVPCallback : public osg::Uniform::Callback
-{
-public:
-	MVPCallback(osg::Camera * camera) :mCamera(camera) {
-	}
-	virtual void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv) {
-		osg::Matrix modelView = mCamera->getViewMatrix();
-		osg::Matrix projectM = mCamera->getProjectionMatrix();
-		uniform->set(modelView * projectM);
-	}
-
-private:
-	osg::Camera * mCamera;
-};
-
-osg::ref_ptr<UpdateSelecteUniform> u_updateSelecteUniform = new UpdateSelecteUniform;
-
-//https://blog.csdn.net/qq_16123279/article/details/82463266
-
-osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::Camera* camera)
-{
-	cout << "osg::getGLVersionNumber" << osg::getGLVersionNumber() << endl;
-
-	//传递给shader
-	osg::ref_ptr<osg::Vec2Array> a_index = new osg::Vec2Array;
-
-	int nCount = allPTs.size();
-
-	osg::ref_ptr<osg::Geometry> pGeometry = new osg::Geometry();
-
-	osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array;
-	
-	for (int i = 0; i < allPTs.size(); i++)
-	{
-		verts->push_back(allPTs[i]);
-	}
-
-	const int							   kLastIndex = allPTs.size() - 1;
-	osg::ref_ptr<osg::ElementBufferObject> ebo = new osg::ElementBufferObject;
-	osg::ref_ptr<osg::DrawElementsUInt>	indices = new osg::DrawElementsUInt(osg::PrimitiveSet::LINE_STRIP);
-
-	float start_index = 0, end_index = 0;
-	int count = 0;
-	int segment_count = 0;
-	for (unsigned int i = 0; i < allPTs.size(); i++)
-	{
-		if (allPTs[i].x() == -1 && allPTs[i].y() == -1)
-		{
-			indices->push_back(kLastIndex);
-
-			for (size_t j = a_index->size() - 1; count > 0; j--, count--)
-			{
-				a_index->at(j).y() = i;
-			}
-
-			start_index = i;
-			segment_count++;
-		}
-		else
-		{
-			indices->push_back(i);
-		}
-		count++;
-		a_index->push_back(osg::Vec2(start_index, 0));
-	}
-
-	indices->setElementBufferObject(ebo);
-	pGeometry->addPrimitiveSet(indices.get());
-	pGeometry->setUseVertexBufferObjects(true); //不启用VBO的话，图元重启没效果
-
-	osg::StateSet* stateset = pGeometry->getOrCreateStateSet();
-	stateset->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
-	stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-	stateset->setMode(GL_PRIMITIVE_RESTART, osg::StateAttribute::ON);
-	stateset->setAttributeAndModes(new osg::PrimitiveRestartIndex(kLastIndex), osg::StateAttribute::ON);
-
-
-	//------------------------osg::Program-----------------------------
-	osg::Program* program = new osg::Program;
-	program->setName("LINESTRIPE");
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_stripe.vert"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_stripe.frag"));
-
-	stateset->setAttributeAndModes(program, osg::StateAttribute::ON);
-
-
-	//-----------attribute  addBindAttribLocation
-	pGeometry->setVertexArray(verts);
-	pGeometry->setVertexAttribArray(0, verts, osg::Array::BIND_PER_VERTEX);
-	pGeometry->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
-	program->addBindAttribLocation("a_pos", 0);
-
-	pGeometry->setVertexAttribArray(1, a_index, osg::Array::BIND_PER_VERTEX);
-	pGeometry->setVertexAttribBinding(1, osg::Geometry::BIND_PER_VERTEX);
-	program->addBindAttribLocation("a_index", 1);
-
-	//-----------uniform
-	osg::Uniform* u_selected_index(new osg::Uniform("u_selected_index", -1));
-	u_selected_index->setUpdateCallback(u_updateSelecteUniform);
-	stateset->addUniform(u_selected_index);
-
-	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
-	u_MVP->setUpdateCallback(new MVPCallback(camera));
-	stateset->addUniform(u_MVP);
-
-	return pGeometry.release();
-}
-
-#endif
-
-
-osg::Geometry* createLine3(osg::MultiDrawArrays* draw, const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::Camera* camera)
+osg::Geometry* createLine3(const std::vector<osg::Vec3d>& allPTs, osg::Vec4 color, osg::Camera* camera)
 {
 	int nCount = allPTs.size();
 
@@ -150,21 +24,29 @@ osg::Geometry* createLine3(osg::MultiDrawArrays* draw, const std::vector<osg::Ve
 		verts->push_back(allPTs[i]);
 	}
 
-	pGeometry->addPrimitiveSet(draw);
 	pGeometry->setUseVertexBufferObjects(true); //不启用VBO的话，图元重启没效果
+	pGeometry->setUseDisplayList(false);
 
-	osg::StateSet* stateset = pGeometry->getOrCreateStateSet();
-	stateset->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
-	stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+	osg::StateSet* ss = pGeometry->getOrCreateStateSet();
+	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
+	ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 
 	pGeometry->setVertexArray(verts);
 	pGeometry->setVertexAttribArray(0, verts, osg::Array::BIND_PER_VERTEX);
 	pGeometry->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
+	pGeometry->setDataVariance(osg::Object::STATIC);
 
 	osg::Vec4Array* colours = new osg::Vec4Array(1);
 	pGeometry->setColorArray(colours, osg::Array::BIND_OVERALL);
 	(*colours)[0].set(1.0f, .0f, .0f, 1.0f);
+	
+	//--------------------------------------------------	
+	g_indirectCommands->getBufferObject()->setUsage(GL_STATIC_DRAW);
 
+	osg::MultiDrawArraysIndirect *ipr = new osg::MultiDrawArraysIndirect(GL_LINE_STRIP);
+	ipr->setIndirectCommandArray(g_indirectCommands.get());
+	pGeometry->addPrimitiveSet(ipr);
+	   
 	return pGeometry.release();
 }
 
@@ -173,12 +55,11 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3d>		 PTs;
 
-	osg::ref_ptr<osg::MultiDrawArrays>	multidraw = new osg::MultiDrawArrays(osg::PrimitiveSet::LINE_STRIP);
 	int COUNT = 0;
-	for (int k = 0; k < 1; k++)
+	for (int k = 0; k < 10000; k++)
 	{
 		float z = 0;
-		for (int j = 0; j < 10; j++)
+		for (int j = 0; j < 100; j++)
 		{
 			int preIndex = PTs.size();
 			for (int i = 0; i < 10; i++)
@@ -186,35 +67,44 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 				PTs.push_back(osg::Vec3(i * 10, j * 10, 50 * k));
 			}
 			
-			multidraw->add(preIndex, PTs.size() - preIndex);
+			osg::DrawArraysIndirectCommand cmd;
+			cmd.first = preIndex;
+			cmd.count = PTs.size() - preIndex;
+			cmd.baseInstance = 0;
+			cmd.instanceCount = 1;
+			g_indirectCommands->push_back(cmd);
 			//PTs.push_back(PTs.back());
 			COUNT++;
 			g_index.push_back(PTs.size() - COUNT);
-			cout << "SIZE " << g_index.back() << endl;
+			//cout << "SIZE " << g_index.back() << endl;
 		}
-
-		for (int j = 0; j < 10; j++)
+		
+		for (int j = 0; j < 100; j++)
 		{
 			int preIndex = PTs.size();
 			for (int i = 0; i < 10; i++)
 			{
-				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 * k + 100));
+				PTs.push_back(osg::Vec3(i * 10, j * 10, 100 + 100 * k));
 			}
 
-			multidraw->add(preIndex, PTs.size() - preIndex);
+			osg::DrawArraysIndirectCommand cmd;
+			cmd.first = preIndex;
+			cmd.count = PTs.size() - preIndex;
+			cmd.baseInstance = 0;
+			cmd.instanceCount = 1;
+			g_indirectCommands->push_back(cmd);
 			//PTs.push_back(PTs.back());
 			COUNT++;
 			g_index.push_back(PTs.size() - COUNT);
-			cout << "SIZE " << g_index.back() << endl;
+			//cout << "SIZE " << g_index.back() << endl;
 		}
 	}
 
-	osg::Geometry* n = createLine3(multidraw, PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
+	osg::Geometry* n = createLine3(PTs, osg::Vec4(1, 0, 0, 1), view.getCamera());
 	geode->addDrawable(n);
 
 	return geode.release();
 }
-
 
 // class to handle events with a pick
 class PickHandler : public osgGA::GUIEventHandler
@@ -331,7 +221,7 @@ public:
 
 			viewer->getCamera()->accept(iv);
 
-			OSG_NOTICE << "PoltyopeIntersector traversal took " << elapsedTime.elapsedTime_m() << "ms" << std::endl;
+			//OSG_NOTICE << "PoltyopeIntersector traversal took " << elapsedTime.elapsedTime_m() << "ms" << std::endl;
 
 			if (picker->containsIntersections())
 			{
@@ -351,6 +241,8 @@ public:
 							//cout << "i " << i << endl; break;
 						}
 					}
+
+					return;
 				}
 				
 				//if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
@@ -390,7 +282,7 @@ int main()
 	view.addEventHandler(new PickHandler);
 	//osg::DisplaySettings::instance()->setGLContextVersion("4.3");
 	//osg::DisplaySettings::instance()->setShaderHint(osg::DisplaySettings::SHADER_GL3);
-	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
+	osg::setNotifyLevel(osg::NotifySeverity::WARN);
 	view.realize();
 	return view.run();
 }
