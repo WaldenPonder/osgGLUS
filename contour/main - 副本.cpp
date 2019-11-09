@@ -6,27 +6,23 @@
 #include <osg/Switch>
 #include <osg/io_utils>
 #include "CollectPointsVisitor.h"
-#include "Manager.h"
-#include <osg/MatrixTransform>
 
-#include <osgSim/Impostor>
-#include <osgSim/InsertImpostorsVisitor>
-#include <osg/ComputeBoundsVisitor>
-#include <random>
 #define NM_NO_SHOW 1
 #define NM_NO_PICK 2
 
+
 class CustomGroup : public osg::Group
 {
- public:
+public:
 	virtual void traverse(osg::NodeVisitor& nv)
 	{
 		if (nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR)
 		{
+			
 		}
 
 		if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-		// || nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR)
+			// || nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR)
 		{
 			return;
 		}
@@ -35,9 +31,10 @@ class CustomGroup : public osg::Group
 	}
 };
 
-osg::ref_ptr<osg::Group> g_root   = new osg::Group;
+osg::ref_ptr<osg::Group>		 g_root   = new osg::Group;
 osg::ref_ptr<osg::Group> g_scene  = new osg::Group;
 osg::Camera*			 g_camera = nullptr;
+osg::ref_ptr<osg::Node>  g_contour;
 
 CollectPointsVisitor g_cpv;
 
@@ -75,6 +72,60 @@ struct ComputeBoundingSphereCallback : public osg::Node::ComputeBoundingSphereCa
 	mutable bool				bCalcu = false;
 	mutable osg::BoundingSphere bs_;
 };
+
+osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, osg::Vec4 color, osg::Camera* camera, bool bUseGeometry)
+{
+	cout << "osg::getGLVersionNumber" << osg::getGLVersionNumber() << endl;
+	cout << "PTS SIZE " << allPTs.size() << endl;
+
+	int nCount = allPTs.size();
+
+	osg::ref_ptr<osg::Geometry> pGeometry = new osg::Geometry();
+
+	osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array;
+	for (int i = 0; i < allPTs.size(); i++)
+	{
+		verts->push_back(allPTs[i]);
+	}
+
+	const int							   kLastIndex = allPTs.size() - 1;
+	osg::ref_ptr<osg::ElementBufferObject> ebo		  = new osg::ElementBufferObject;
+	osg::ref_ptr<osg::DrawElementsUInt>	indices	= new osg::DrawElementsUInt(osg::PrimitiveSet::LINE_STRIP);
+
+	int count = 0;
+	for (unsigned int i = 0; i < allPTs.size(); i++)
+	{
+		if (allPTs[i].x() == -1 && allPTs[i].y() == -1)  //图元重启
+		{
+			indices->push_back(kLastIndex);
+		}
+		else
+		{
+			indices->push_back(i);
+		}
+		count++;
+	}
+
+	indices->setElementBufferObject(ebo);
+	pGeometry->addPrimitiveSet(indices.get());
+	pGeometry->setUseVertexBufferObjects(true);  //不启用VBO的话，图元重启没效果
+	pGeometry->setDataVariance(osg::Object::STATIC);
+	pGeometry->setCullingActive(false);
+	pGeometry->setVertexArray(verts);
+
+	osg::Vec4Array* colors = new osg::Vec4Array;
+	colors->push_back(osg::Vec4(0, 1, 1, 1));
+	colors->setBinding(osg::Array::BIND_OVERALL);
+	pGeometry->setColorArray(colors);
+
+	osg::StateSet* stateset = pGeometry->getOrCreateStateSet();
+	stateset->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
+	stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+	stateset->setMode(GL_PRIMITIVE_RESTART, osg::StateAttribute::ON);
+	stateset->setAttributeAndModes(new osg::PrimitiveRestartIndex(kLastIndex), osg::StateAttribute::ON);
+
+	return pGeometry.release();
+}
 
 class PickHandler : public osgGA::GUIEventHandler
 {
@@ -120,14 +171,22 @@ class PickHandler : public osgGA::GUIEventHandler
 				if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
 			}
 
-			cout << (clock() - t) << endl;
+			cout << (clock() - t) << endl; 
 			break;
 		}
 		case (osgGA::GUIEventAdapter::KEYDOWN):
 		{
 			if (ea.getKey() == osgGA::GUIEventAdapter::KEY_B)
 			{
-
+				g_scene->removeChildren(0, g_scene->getNumChildren());
+				osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+				osg::Geometry*			 n	 = createLine2(g_cpv.resultPts_, osg::Vec4(1, 0, 0, 1), viewer->getCamera(), true);
+				geode->setCullingActive(false);
+				geode->addDrawable(n);
+				geode->setNodeMask(NM_NO_PICK);
+				g_scene->addChild(geode);
+				geode->setComputeBoundingSphereCallback(new ComputeBoundingSphereCallback);
+				break;
 			}
 		}
 		}
@@ -135,82 +194,30 @@ class PickHandler : public osgGA::GUIEventHandler
 	}
 };
 
-class CollectGeometryVisitor : public osg::NodeVisitor
-{
- public:
-	CollectGeometryVisitor() : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
-	{
-	}
-
-	virtual void apply(osg::Geometry& geo)
-	{
-		osg::Geode* g = new osg::Geode;
-		g->addChild(&geo);
-		geos_.push_back(g);
-	}
-
- public:
-	std::vector<osg::ref_ptr<osg::Node>> geos_;
-};
 
 int main()
 {
 	osgViewer::Viewer view;
 
-	Manager manage(g_root, 3, 3);
+	CustomGroup* grp = new CustomGroup;
+	g_contour = osgDB::readNodeFile("E:\\FileRecv\\boston_buildings_utm19.shp");
+	//grp->addChild(g_contour);
+	//g_contour = osgDB::readNodeFile("E:\\FileRecv\\morelines.shp");
 
-	//osg::ref_ptr<osg::Node> g_contour = osgDB::readNodeFile("E:\\FileRecv\\boston_buildings_utm19.shp");
-	//CollectGeometryVisitor cgv;
-	//g_contour->accept(cgv);
-	//manage.nodes_.push_back(g_contour);
+	g_contour->accept(g_cpv);
+	//g_contour->setNodeMask(NM_NO_SHOW);
+	g_root->addChild(grp);
 
-	//osg::Node* cow = osgDB::readNodeFile("cow.osg");
+	osg::ref_ptr<osg::KdTreeBuilder> kdBuild = new osg::KdTreeBuilder;
+	g_contour->accept(*kdBuild);
 
-	//for (int i = 0; i < 1; i++)
-	//{
-	//	osg::MatrixTransform* tran = new osg::MatrixTransform;
-	//	tran->setMatrix( osg::Matrix::scale(100, 100, 100) * osg::Matrix::translate(g_contour->getBound().center()));
-	//	tran->addChild(cow);
-	//	manage.nodes_.push_back(tran);
-	//}
-	//manage.nodes_.push_back(g_contour);
-    //manage.nodes_ = cgv.geos_;
-
-	std::default_random_engine eng(time(NULL));
-	
-	std::uniform_real_distribution<double> rand_color(.3, 1.);
-
-	for (int i = 1; i < 100; i++)
-	{		
-		for (int j = 1; j < 1000; j++)
-		{
-			std::uniform_int_distribution<int> rand_x( 100 * i, 200 * i);
-			std::uniform_int_distribution<int> rand_y( 100 * j, 200 * j);
-
-			vector<osg::Vec3d> pts;
-			for (int k = 0; k < 20; k++)
-			{
-				int x = rand_x(eng);
-				int y = rand_y(eng);
-
-				pts.push_back(osg::Vec3(x, y, 0));
-			}
-			
-			osg::Geometry* geom = createLine(pts, osg::Vec4(rand_color(eng), rand_color(eng), rand_color(eng), 1), osg::PrimitiveSet::LINE_STRIP);
-			osg::Geode* geode = new osg::Geode;
-			geode->addChild(geom);
-			manage.nodes_.push_back(geode);
-		}
-	}
-
-	manage.build();
-
+	g_root->addChild(g_scene);
 	view.setSceneData(g_root);
 	add_event_handler(view);
 	view.addEventHandler(new PickHandler);
 	view.realize();
 	g_camera = view.getCamera();
-	//g_camera->setCullMask(~NM_NO_SHOW);
-	//g_camera->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES);
+	g_camera->setCullMask(~NM_NO_SHOW);
+
 	return view.run();
 }

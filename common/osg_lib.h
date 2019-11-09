@@ -8,6 +8,7 @@
 #pragma comment(lib,"osgGAd.lib")
 #pragma comment(lib,"osgTextd.lib")
 #pragma comment(lib,"osgViewerd.lib")
+#pragma comment(lib,"osgSimd.lib")
 #else
 #pragma comment(lib,"OpenThreads.lib")
 #pragma comment(lib,"osg.lib")
