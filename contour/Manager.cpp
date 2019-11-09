@@ -5,6 +5,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/io_utils>
 #include <iostream>
+#include <random>
 
 Manager::Manager(osg::Group* root, int row, int col) : root_(root), row_(row), col_(col)
 {
@@ -63,20 +64,23 @@ void Manager::build()
 		tiles_[r][c]->addChild(n);
 	}
 
+	std::default_random_engine eng(time(NULL));
+	std::uniform_real_distribution<float> rand(0, 1);
+
 	for (int r = 0; r < row_; r++)
 	{
 		for (int c = 0; c < col_; c++)
 		{
 			osg::Group* tile = tiles_[r][c];
 						
-			for (int i = 0; i < tile->getNumChildren() / 3; i++)
+			for (int i = 0; i < tile->getNumChildren(); i++)
 			{
-				tiles2_[r][c]->addChild(tile->getChild(i));
+				if(rand(eng) < .2)
+					tiles2_[r][c]->addChild(tile->getChild(i));
 			}
 		}
 	}
-
-
+	
 	//--------------------´´½¨osgSim::Impostor-----------------------------
 	for (int r = 0; r < row_; r++)
 	{
@@ -84,20 +88,26 @@ void Manager::build()
 		{
 			osg::Group* tile = tiles_[r][c];
 
-			osgSim::Impostor* impostor = new osgSim::Impostor;
+			//osgSim::Impostor * impostor = new osgSim::Impostor;
+			osg::LOD* impostor = new osg::LOD;
 			root_->addChild(impostor);
 			impostor->addChild(tile);
 			impostor->addChild(tiles2_[r][c]);
 
-			impostor->setRange(0, 0.0f, 1e3f);
-			impostor->setRange(1, 1e3f, 1e7f);
-			impostor->setCenter(tile->getBound().center());
+			osg::BoundingSphere bs = tile->computeBound();
+			float r = bs.radius() * 2;
+			impostor->setRange(0, 0.0f, r);
+			impostor->setRange(1, r, 1e7f);
+			osg::Vec3 p = bs.center();
+			cout << p << endl;
+			impostor->setCenter(p);
 
 			// impostor specific settings.
-			impostor->setImpostorThresholdToBound(5.0f);
+			//impostor->setImpostorThreshold(1e7f);
+			//impostor->setImpostorThresholdToBound(5.0f);
 		}
 	}
-
+	return;
 	// now insert impostors in the model using the InsertImpostorsVisitor.
 	osgSim::InsertImpostorsVisitor ov;
 

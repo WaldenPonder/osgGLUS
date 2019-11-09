@@ -17,5 +17,6 @@
 #pragma comment(lib,"osgGA.lib")
 #pragma comment(lib,"osgText.lib")
 #pragma comment(lib,"osgViewer.lib")
+#pragma comment(lib,"osgSim.lib")
 #endif
 

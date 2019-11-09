@@ -94,7 +94,7 @@ class PickHandler : public osgGA::GUIEventHandler
 		case (osgGA::GUIEventAdapter::RELEASE):
 		{
 			clock_t t = clock();
-
+			break;
 			osgUtil::PolytopeIntersector* picker;
 
 			// use window coordinates
@@ -157,35 +157,20 @@ int main()
 {
 	osgViewer::Viewer view;
 
-	Manager manage(g_root, 3, 3);
-
-	//osg::ref_ptr<osg::Node> g_contour = osgDB::readNodeFile("E:\\FileRecv\\boston_buildings_utm19.shp");
-	//CollectGeometryVisitor cgv;
-	//g_contour->accept(cgv);
-	//manage.nodes_.push_back(g_contour);
-
-	//osg::Node* cow = osgDB::readNodeFile("cow.osg");
-
-	//for (int i = 0; i < 1; i++)
-	//{
-	//	osg::MatrixTransform* tran = new osg::MatrixTransform;
-	//	tran->setMatrix( osg::Matrix::scale(100, 100, 100) * osg::Matrix::translate(g_contour->getBound().center()));
-	//	tran->addChild(cow);
-	//	manage.nodes_.push_back(tran);
-	//}
-	//manage.nodes_.push_back(g_contour);
-    //manage.nodes_ = cgv.geos_;
+	Manager manage(g_root, 20, 20);
 
 	std::default_random_engine eng(time(NULL));
-	
 	std::uniform_real_distribution<double> rand_color(.3, 1.);
 
-	for (int i = 1; i < 100; i++)
+#if 1
+
+	const float SIZE = 100;
+	for (float i = 1; i < 1000; i++)
 	{		
-		for (int j = 1; j < 1000; j++)
+		for (float j = 1; j < 1000; j++)
 		{
-			std::uniform_int_distribution<int> rand_x( 100 * i, 200 * i);
-			std::uniform_int_distribution<int> rand_y( 100 * j, 200 * j);
+			std::uniform_int_distribution<int> rand_x(SIZE * i, SIZE * i + SIZE);
+			std::uniform_int_distribution<int> rand_y(SIZE * j, SIZE * j + SIZE);
 
 			vector<osg::Vec3d> pts;
 			for (int k = 0; k < 20; k++)
@@ -202,6 +187,21 @@ int main()
 			manage.nodes_.push_back(geode);
 		}
 	}
+
+#else
+	osg::ref_ptr<osg::Node> g_contour = osgDB::readNodeFile("E:\\FileRecv\\boston_buildings_utm19.shp");
+	CollectGeometryVisitor cgv;
+	g_contour->accept(cgv);
+	
+	for (int i = 0; i < 10; i++)
+	{
+		osg::MatrixTransform* tran = new osg::MatrixTransform;
+		tran->setMatrix(osg::Matrix::translate(g_contour->getBound().center() * 10.f));
+		manage.nodes_.push_back(tran);
+	}
+	manage.nodes_ = cgv.geos_;
+
+#endif
 
 	manage.build();
 

@@ -26,9 +26,20 @@ using namespace std;
 #include <osg/LineWidth>
 #include <osg/PrimitiveSet>
 #include <osg/PrimitiveRestartIndex>
-#include "osg/PositionAttitudeTransform"
+#include <osg/PositionAttitudeTransform>
 #include <osg/KdTree>
 #include <osg/Point>
+#include <osgGA/KeySwitchMatrixManipulator>
+#include <osgViewer/ViewerEventHandlers>
+
+#include <osgGA/TrackballManipulator>
+#include <osgGA/FlightManipulator>
+#include <osgGA/DriveManipulator>
+#include <osgGA/KeySwitchMatrixManipulator>
+#include <osgGA/StateSetManipulator>
+#include <osgGA/AnimationPathManipulator>
+#include <osgGA/TerrainManipulator>
+#include <osgGA/SphericalManipulator>
 
 #include "event_handler.inc"
 
