@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "out_line", "out_line\out_li
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "contour", "contour\contour.vcxproj", "{03B02823-5F32-4DB5-AF1D-7BB4CB020260}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pixel_pick", "pixel_pick\pixel_pick.vcxproj", "{986DD8FC-7EE0-4129-8324-01F827874001}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -65,6 +67,14 @@ Global
 		{03B02823-5F32-4DB5-AF1D-7BB4CB020260}.Release|x64.Build.0 = Release|x64
 		{03B02823-5F32-4DB5-AF1D-7BB4CB020260}.Release|x86.ActiveCfg = Release|Win32
 		{03B02823-5F32-4DB5-AF1D-7BB4CB020260}.Release|x86.Build.0 = Release|Win32
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Debug|x64.ActiveCfg = Debug|x64
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Debug|x64.Build.0 = Debug|x64
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Debug|x86.ActiveCfg = Debug|Win32
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Debug|x86.Build.0 = Debug|Win32
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Release|x64.ActiveCfg = Release|x64
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Release|x64.Build.0 = Release|x64
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Release|x86.ActiveCfg = Release|Win32
+		{986DD8FC-7EE0-4129-8324-01F827874001}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,6 +85,7 @@ Global
 		{98080C27-6036-4444-AE73-9CF7DDB44DDE} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 		{4C91CD3C-AC2B-4CD7-9B6A-EC4AEF33FCC2} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 		{03B02823-5F32-4DB5-AF1D-7BB4CB020260} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
+		{986DD8FC-7EE0-4129-8324-01F827874001} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6E50A045-43C6-4C21-81A1-66F79702C4E5}

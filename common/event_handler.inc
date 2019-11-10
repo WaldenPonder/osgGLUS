@@ -26,7 +26,7 @@ inline void add_event_handler(osgViewer::Viewer&   viewer)
 
 	// add the record camera path handler
 	viewer.addEventHandler(new osgViewer::RecordCameraPathHandler);
-
+	
 	// add the LOD Scale handler
 	viewer.addEventHandler(new osgViewer::LODScaleHandler);
 
