@@ -94,7 +94,7 @@ class PickHandler : public osgGA::GUIEventHandler
 		case (osgGA::GUIEventAdapter::RELEASE):
 		{
 			clock_t t = clock();
-			break;
+		
 			osgUtil::PolytopeIntersector* picker;
 
 			// use window coordinates
@@ -157,7 +157,7 @@ int main()
 {
 	osgViewer::Viewer view;
 
-	Manager manage(g_root, 20, 20);
+	Manager manage(g_root, 6, 6);
 
 	std::default_random_engine eng(time(NULL));
 	std::uniform_real_distribution<double> rand_color(.3, 1.);
@@ -189,6 +189,7 @@ int main()
 	}
 
 #else
+
 	osg::ref_ptr<osg::Node> g_contour = osgDB::readNodeFile("E:\\FileRecv\\boston_buildings_utm19.shp");
 	CollectGeometryVisitor cgv;
 	g_contour->accept(cgv);

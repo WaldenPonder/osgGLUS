@@ -16,5 +16,6 @@ public:
 	const int row_, col_;
 	std::vector<std::vector<osg::Group*>> tiles_;
 	std::vector<std::vector<osg::Group*>> tiles2_;
+	std::vector<std::vector<osg::Group*>> tiles3_;
 };
 

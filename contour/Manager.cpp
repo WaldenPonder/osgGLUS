@@ -11,6 +11,7 @@ Manager::Manager(osg::Group* root, int row, int col) : root_(root), row_(row), c
 {
 	tiles_.resize(row, std::vector<osg::Group*>(col));
 	tiles2_.resize(row, std::vector<osg::Group*>(col));
+	tiles3_.resize(row, std::vector<osg::Group*>(col));
 
 	for (int r = 0; r < row; r++)
 	{
@@ -21,6 +22,9 @@ Manager::Manager(osg::Group* root, int row, int col) : root_(root), row_(row), c
 
 			osg::Group* n2 = new osg::Group;
 			tiles2_[r][c] = n2;
+
+			osg::Group* n3 = new osg::Group;
+			tiles3_[r][c] = n3;
 		}
 	}
 }
@@ -66,7 +70,7 @@ void Manager::build()
 
 	std::default_random_engine eng(time(NULL));
 	std::uniform_real_distribution<float> rand(0, 1);
-
+	
 	for (int r = 0; r < row_; r++)
 	{
 		for (int c = 0; c < col_; c++)
@@ -75,9 +79,11 @@ void Manager::build()
 						
 			for (int i = 0; i < tile->getNumChildren(); i++)
 			{
-				if(rand(eng) < .2)
+				if(rand(eng) < .3)
 					tiles2_[r][c]->addChild(tile->getChild(i));
 			}
+
+			tiles3_[r][c]->addChild(tile->getChild(0));
 		}
 	}
 	
@@ -88,25 +94,28 @@ void Manager::build()
 		{
 			osg::Group* tile = tiles_[r][c];
 
-			//osgSim::Impostor * impostor = new osgSim::Impostor;
-			osg::LOD* impostor = new osg::LOD;
+			osgSim::Impostor * impostor = new osgSim::Impostor;
+			//osg::LOD* impostor = new osg::LOD;
 			root_->addChild(impostor);
 			impostor->addChild(tile);
 			impostor->addChild(tiles2_[r][c]);
+			impostor->addChild(tiles3_[r][c]);
 
 			osg::BoundingSphere bs = tile->computeBound();
-			float r = bs.radius() * 2;
+			float r = bs.radius() * 3;
 			impostor->setRange(0, 0.0f, r);
 			impostor->setRange(1, r, 1e7f);
+			impostor->setRange(2, 1e7f, DBL_MAX);
 			osg::Vec3 p = bs.center();
 			cout << p << endl;
 			impostor->setCenter(p);
 
 			// impostor specific settings.
 			//impostor->setImpostorThreshold(1e7f);
-			//impostor->setImpostorThresholdToBound(5.0f);
+			impostor->setImpostorThresholdToBound(5.0f);
 		}
 	}
+	
 	return;
 	// now insert impostors in the model using the InsertImpostorsVisitor.
 	osgSim::InsertImpostorsVisitor ov;
