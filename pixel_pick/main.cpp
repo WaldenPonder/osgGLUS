@@ -25,6 +25,84 @@ class MVPCallback : public osg::Uniform::Callback
 	osg::Camera* mCamera;
 };
 
+
+struct MyCameraPostDrawCallback : public osg::Camera::DrawCallback
+{
+	MyCameraPostDrawCallback(osg::Image* image) :
+		_image(image)
+	{
+	}
+
+	virtual void operator () (const osg::Camera& /*camera*/) const
+	{
+		if (FLAG) return;
+
+		if (_image && _image->getPixelFormat() == GL_RGBA && _image->getDataType() == GL_UNSIGNED_BYTE)
+		{
+			// we'll pick out the center 1/2 of the whole image,
+			int column_start = _image->s() / 4;
+			int column_end = 3 * column_start;
+
+			int row_start = _image->t() / 4;
+			int row_end = 3 * row_start;
+
+			string str;
+			// and then invert these pixels
+			for (int r = row_start; r < row_end; ++r)
+			{
+				unsigned char* data = _image->data(column_start, r);
+				for (int c = column_start; c < column_end; ++c)
+				{
+					unsigned char r = *data; data++;
+					unsigned char g = *data; data++;
+					unsigned char b = *data; data++;
+					unsigned char a = *data; data++;
+
+					if (r + g + b + a > 0)
+					{
+						cout << std::to_string(r) << "\t" << std::to_string(g) << "\t" << std::to_string(b) << "\t" << std::to_string(a) << endl;
+					}
+				}
+			}
+
+			FLAG = true;
+			// dirty the image (increments the modified count) so that any textures
+			// using the image can be informed that they need to update.
+			_image->dirty();
+		}
+		else if (_image && _image->getPixelFormat() == GL_RGBA && _image->getDataType() == GL_FLOAT)
+		{
+			// we'll pick out the center 1/2 of the whole image,
+			int column_start = _image->s() / 4;
+			int column_end = 3 * column_start;
+
+			int row_start = _image->t() / 4;
+			int row_end = 3 * row_start;
+			string str;
+			// and then invert these pixels
+			for (int r = row_start; r < row_end; ++r)
+			{
+				float* data = (float*)_image->data(column_start, r);
+				for (int c = column_start; c < column_end; ++c)
+				{
+					int flag = *data;
+					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
+					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
+					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
+					if (flag) cout << std::to_string(*data) << "\n"; str += std::to_string(*data); data++;
+				}
+			}
+			FLAG = true;
+			// dirty the image (increments the modified count) so that any textures
+			// using the image can be informed that they need to update.
+			_image->dirty();		
+		}
+
+	}
+	mutable bool FLAG = false;
+	osg::Image* _image;
+};
+
 //https://blog.csdn.net/qq_16123279/article/details/82463266
 
 osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, const std::vector<osg::Vec3d>& colors, osg::Camera* camera)
@@ -137,10 +215,11 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 
 	osg::Geometry* n = createLine2(PTs, colors, view.getCamera());
 	n->setName("LINE1");
-	n->setUserValue("ID", osg::Vec4(0, 1, 0, 1));
 	geode->addDrawable(n);
 
-
+	osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
+	uniform->set(osg::Vec4(.5, .1, 0, 1.));
+	n->getOrCreateStateSet()->addUniform(uniform);
 
 	//-------------------------------------------------
 	PTs.clear();
@@ -153,31 +232,14 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 
 	osg::Geometry* n2 = createLine2(PTs, colors, view.getCamera());
 	n2->setName("LINE2");
-	n2->setUserValue("ID", osg::Vec4(1, 0, 0, 1));
 	geode->addDrawable(n2);
 
-	//uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-	//uniform->set(osg::Vec4(1, 0, 0, 1));
-	//n2->getOrCreateStateSet()->addUniform(uniform);
+	uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
+	uniform->set(osg::Vec4(0, 1., 0, 1.));
+	n2->getOrCreateStateSet()->addUniform(uniform);
 
 	return geode.release();
 }
-
-class UniformVisitor : public osg::NodeVisitor
-{
-public:
-	UniformVisitor(osg::Camera* camera) : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) { camera_ = camera; }
-
-	virtual void apply(osg::Geometry& gem) override
-	{
-		osg::StateSet* ss = camera_->getOrCreateStateSet();
-		osg::Vec4 color;
-		gem.getUserValue("ID", color);
-		ss->getUniform("u_color")->set(color);
-	}
-
-	osg::Camera* camera_;
-};
 
 // class to handle events with a pick
 class PickHandler : public osgGA::GUIEventHandler
@@ -259,24 +321,33 @@ class PickHandler : public osgGA::GUIEventHandler
 		b = true;
 
 		osg::ref_ptr<osg::Camera> camera = new osg::Camera;
+		camera->setClearColor(osg::Vec4());
+		camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+		camera->setRenderOrder(osg::Camera::PRE_RENDER);
 		camera->setViewport(0, 0, 200, 200);
 		camera->setGraphicsContext(viewer->getCamera()->getGraphicsContext());
 		viewer->addSlave(camera);
 
-		osg::StateSet* ss = camera->getOrCreateStateSet();
-		osg::Program* program = new osg::Program;
+		osg::StateSet* ss	  = camera->getOrCreateStateSet();
+		osg::Program*  program = new osg::Program;
 		program->setName("PIXEL_PICK");
 		program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/pixel_pick.vert"));
 		program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/pixel_pick.frag"));
-			   
+
 		ss->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
-		//osg::ref_ptr<UniformVisitor> uv = new UniformVisitor(camera);
-		//camera->accept(*uv);
+		osg::Image* image = new osg::Image;		
+		image->allocateImage(200, 200, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
-		osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-		uniform->set(osg::Vec4(0, 1, 0, 1));
-		ss->addUniform(uniform);
+		// attach the image so its copied on each frame.
+		camera->attach(osg::Camera::COLOR_BUFFER, image);
+
+		camera->setPostDrawCallback(new MyCameraPostDrawCallback(image));
+
+		//osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
+		//uniform->set(osg::Vec4(1, 1, 0, 1));
+		//ss->addUniform(uniform);
 	}
 
 	void pick(const osgGA::GUIEventAdapter& ea, osgViewer::Viewer* viewer)
