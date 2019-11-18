@@ -7,7 +7,7 @@
 #include <osg/KdTree>
 #include <random>
 
-#define  WINDOWSIZE 4
+#define  WINDOWSIZE 8
 
 bool g_bMouseRelease = false;
 osg::ref_ptr<osg::Camera> g_pickCamera = new osg::Camera;
