@@ -7,7 +7,7 @@
 #include <osg/KdTree>
 #include <random>
 
-#define  WINDOWSIZE 5
+#define  WINDOWSIZE 4
 
 bool g_bMouseRelease = false;
 osg::ref_ptr<osg::Camera> g_pickCamera = new osg::Camera;
@@ -91,11 +91,15 @@ struct MyCameraPostDrawCallback : public osg::Camera::DrawCallback
 				float* data = (float*)_image->data(column_start, r);
 				for (int c = column_start; c < column_end; ++c)
 				{
-					int flag = *data;
-					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
-					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
-					if (flag) cout << std::to_string(*data) << "\t"; str += std::to_string(*data); data++;
-					if (flag) cout << std::to_string(*data) << "\n"; str += std::to_string(*data); data++;
+					float r = *data; data++;
+					float g = *data; data++;
+					float b = *data; data++;
+					float a = *data; data++;
+
+					if (r + g + b + a > 0)
+					{
+						cout << std::to_string(r) << "\t" << std::to_string(g) << "\t" << std::to_string(b) << "\t" << std::to_string(a) << endl;
+					}
 				}
 			}
 			// dirty the image (increments the modified count) so that any textures
@@ -179,7 +183,7 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3d>& allPTs, const std::vec
 	pGeometry->setVertexAttribBinding(1, osg::Geometry::BIND_PER_VERTEX);
 	program->addBindAttribLocation("a_color", 1);
 
-	//-----------uniform
+	//-----------------------------------------------uniform
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
 	u_MVP->setUpdateCallback(new MVPCallback(camera));
 	ss->addUniform(u_MVP);
@@ -223,7 +227,7 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	geode->addDrawable(n);
 
 	osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-	uniform->set(osg::Vec4(.1, 0, 0, 1.));
+	uniform->set(osg::Vec4(1, 0, 0, 1.));
 	n->getOrCreateStateSet()->addUniform(uniform);
 
 	//-------------------------------------------------
@@ -240,10 +244,46 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	geode->addDrawable(n2);
 
 	uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-	uniform->set(osg::Vec4(.2, 0, 0, 1.));
+	uniform->set(osg::Vec4(0, 1, 0, 1.));
 	n2->getOrCreateStateSet()->addUniform(uniform);
 
 	return geode.release();
+}
+
+
+void createHudCamera(osgViewer::Viewer* viewer, osg::Image* image)
+{
+	osg::Geode*	geode_quat = nullptr;
+	osg::Geometry* screenQuat = nullptr;
+	int w_ = 200, h_ = 200;
+	osg::Camera* hud_camera_ = new osg::Camera;
+	viewer->getSceneData()->asGroup()->addChild(hud_camera_);
+	
+	screenQuat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
+	{
+		hud_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+		hud_camera_->setProjectionMatrixAsOrtho2D(0, w_, 0, h_);
+		hud_camera_->setViewMatrix(osg::Matrix::identity());
+		hud_camera_->setViewport(0, 0, w_, h_);
+		hud_camera_->setRenderOrder(osg::Camera::POST_RENDER);
+		hud_camera_->setClearMask(GL_DEPTH_BUFFER_BIT);
+		hud_camera_->getOrCreateStateSet()->setMode(GL_LIGHTING,
+			osg::StateAttribute::OFF);
+
+		geode_quat = new osg::Geode;
+		hud_camera_->addChild(geode_quat);
+		geode_quat->addChild(screenQuat);
+		geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+		geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+
+		screenQuat->setDataVariance(osg::Object::DYNAMIC);
+		screenQuat->setSupportsDisplayList(false);
+
+		osg::StateSet* ss = geode_quat->getOrCreateStateSet();
+		osg::Texture2D* texture = new osg::Texture2D;
+		texture->setImage(image);
+		ss->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
+	}
 }
 
 // class to handle events with a pick
@@ -259,6 +299,32 @@ class PickHandler : public osgGA::GUIEventHandler
 	~PickHandler() {}
 
 	void setPrimitiveMask(unsigned int primitiveMask) { _primitiveMask = primitiveMask; }
+
+	void screenRay(float x, float y, osg::Camera* pCamera, osg::Vec3& start, osg::Vec3& end)
+	{
+		osg::Matrixd mtPVW = pCamera->getViewMatrix() *
+			pCamera->getProjectionMatrix() *
+			pCamera->getViewport()->computeWindowMatrix();
+
+		osg::Matrixd mtInvPVW;
+		mtInvPVW.invert(mtPVW);
+
+		osg::Vec4d nearPosition(x, y, 0.0, 1.0);
+		osg::Vec4d worldNearPosition = nearPosition * mtInvPVW;
+		worldNearPosition /= worldNearPosition.w();
+
+		osg::Vec4d farPosition(x, y, 1.0, 1.0);
+		osg::Vec4d worldFarPosition = farPosition * mtInvPVW;
+		worldFarPosition /= worldFarPosition.w();
+
+		start.x() = worldNearPosition.x();
+		start.y() = worldNearPosition.y();
+		start.z() = worldNearPosition.z();
+
+		end.x() = worldFarPosition.x();
+		end.y() = worldFarPosition.y();
+		end.z() = worldFarPosition.z();
+	}
 
 	bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 	{
@@ -276,17 +342,28 @@ class PickHandler : public osgGA::GUIEventHandler
 			_mx = ea.getX();
 			_my = ea.getY();
 
+			osg::Viewport* vp = viewer->getCamera()->getViewport();
+
+			float wx = vp->width();
+			float wy = vp->height();
+			
 			float x = ea.getXnormalized();
 			float y = ea.getYnormalized();
 
-			osg::Matrix mat = viewer->getCamera()->getViewMatrix() * viewer->getCamera()->getProjectionMatrix();
-
-			osg::Vec3 eye = osg::Vec3(x, y, -1) * osg::Matrix::inverse(mat);
-			osg::Vec3 center = osg::Vec3(x, y, 1) * osg::Matrix::inverse(mat);
-			osg::Vec3 up = osg::Vec3(0, 1, 0) * mat;
-					   
-			g_pickCamera->setViewMatrix(osg::Matrix::lookAt(eye, center, up));
+			osg::Matrix mat = viewer->getCamera()->getViewMatrix() * 
+				viewer->getCamera()->getProjectionMatrix();
+		
+			osg::Vec3 eye, center;
 			
+			eye = osg::Vec3(x, y, -1) * osg::Matrix::inverse(mat);
+			center = osg::Vec3(x, y, 1) * osg::Matrix::inverse(mat);
+
+			osg::Vec3 up = osg::Vec3(0, 1, 0) *viewer->getCamera()->getViewMatrix();
+					   
+			//g_pickCamera->setProjectionMatrix(viewer->getCamera()->getProjectionMatrix());
+			g_pickCamera->setProjectionMatrix(osg::Matrix::ortho2D(0, WINDOWSIZE, 0, WINDOWSIZE));
+			g_pickCamera->setViewMatrix(osg::Matrix::lookAt(eye, center, up));
+
 			break;
 		}
 		case (osgGA::GUIEventAdapter::MOVE):
@@ -300,7 +377,6 @@ class PickHandler : public osgGA::GUIEventHandler
 			if (_mx == ea.getX() && _my == ea.getY())
 			{
 				// only do a pick if the mouse hasn't moved
-				//pick(ea, viewer);
 				addSlave(ea, viewer);
 			}
 			return true;
@@ -346,74 +422,9 @@ class PickHandler : public osgGA::GUIEventHandler
 
 		g_pickCamera->setPostDrawCallback(new MyCameraPostDrawCallback(image));
 
-		//osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-		//uniform->set(osg::Vec4(1, 1, 0, 1));
-		//ss->addUniform(uniform);
-	}
 
-	void pick(const osgGA::GUIEventAdapter& ea, osgViewer::Viewer* viewer)
-	{
-		osg::Node* scene = viewer->getSceneData();
-		if (!scene) return;
+		createHudCamera(viewer, image);
 
-		osg::notify(osg::NOTICE) << std::endl;
-
-		osg::Node*  node   = 0;
-		osg::Group* parent = 0;
-
-		if (_usePolytopeIntersector)
-		{
-			osgUtil::PolytopeIntersector* picker;
-			if (0)
-			{
-				// use window coordinates
-				// remap the mouse x,y into viewport coordinates.
-				osg::Viewport* viewport = viewer->getCamera()->getViewport();
-				double		   mx		= viewport->x() + ( int )(( double )viewport->width() * (ea.getXnormalized() * 0.5 + 0.5));
-				double		   my		= viewport->y() + ( int )(( double )viewport->height() * (ea.getYnormalized() * 0.5 + 0.5));
-
-				// half width, height.
-				double w = 5.0f;
-				double h = 5.0f;
-				picker   = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, mx - w, my - h, mx + w, my + h);
-			}
-			else
-			{
-				double mx = ea.getXnormalized();
-				double my = ea.getYnormalized();
-				double w  = 0.05;
-				double h  = 0.05;
-				picker	= new osgUtil::PolytopeIntersector(osgUtil::Intersector::PROJECTION, mx - w, my - h, mx + w, my + h);
-			}
-
-			picker->setPrecisionHint(_precisionHint);
-			picker->setPrimitiveMask(_primitiveMask);
-
-			osgUtil::IntersectionVisitor iv(picker);
-
-			osg::ElapsedTime elapsedTime;
-
-			viewer->getCamera()->accept(iv);
-
-			OSG_NOTICE << "PoltyopeIntersector traversal took " << elapsedTime.elapsedTime_m() << "ms" << std::endl;
-
-			if (picker->containsIntersections())
-			{
-				for (osgUtil::PolytopeIntersector::Intersection intersection : picker->getIntersections())
-				{
-					cout << "pre_index " << intersection.primitiveIndex
-						 << std::endl;
-
-					osg::NodePath& nodePath = intersection.nodePath;
-					node					= (nodePath.size() >= 1) ? nodePath[nodePath.size() - 1] : 0;
-					parent					= (nodePath.size() >= 2) ? dynamic_cast<osg::Group*>(nodePath[nodePath.size() - 2]) : 0;
-				}
-
-				//if (node) std::cout << "  Hits " << node->className() << " nodePath size " << nodePath.size() << std::endl;
-			}
-		}
-
-		// now we try to decorate the hit node by the osgFX::Scribe to show that its been "picked"
 	}
 
 	void setPrecisionHint(osgUtil::Intersector::PrecisionHint hint) { _precisionHint = hint; }
@@ -431,16 +442,6 @@ int main()
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
 	root->addChild(create_lines(view));
-
-#if 0
-	osg::Node* cow = osgDB::readNodeFile("cow.osg");
-	{
-		osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-		uniform->set(osg::Vec4(.3, 0, 0, 1.));
-		cow->getOrCreateStateSet()->addUniform(uniform);
-		root->addChild(cow);
-	}
-#endif
 
 	view.setSceneData(root);
 	add_event_handler(view);
