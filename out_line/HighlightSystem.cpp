@@ -7,16 +7,17 @@
 #include <osg/Vec3>
 #include <osgViewer/Viewer>
 #include <osgDB/ReadFile>
-#include "ViewControlData.h"
-#include "DB/DbSystemUtil.h"
-#include "DB/DbCommand.h"
 #include <osg/io_utils>
 #include <osg/AutoTransform>
+#include <vector>
+#include "../common/common.h"
+using namespace std;
 
 #define PING_PONG_NUM 4
 #define TEXTURE_SIZE1 2048.f
 #define TEXTURE_SIZE2 1024.f
 #define UNIFORM_CALLBACK
+#define  NM_NO_PICK 1 
 
 struct HighlightSystemPrivateData
 {
@@ -26,7 +27,7 @@ struct HighlightSystemPrivateData
 	osg::Camera*			 hud_camera_	 = nullptr;		//◊Ó÷’œ‘ æ
 	osg::Texture2D*			 first_texture_  = nullptr;
 	osg::Texture2D*			 second_texture_ = nullptr;
-	CViewControlData*		 pOSG_;
+	osgViewer::Viewer*		 pOSG_;
 	osg::ref_ptr<osg::Group> highlightRoot_ = new osg::Group;
 	float					 w_, h_;
 
@@ -101,10 +102,11 @@ struct HighlightSystem::Impl : public HighlightSystemPrivateData
 			if (imp_->w_ != vp->width() || imp_->h_ != vp->height())
 			{
 				imp_->w_ = vp->width(), imp_->h_ = vp->height();
-				imp_->pOSG_->addCommand(new DbCommandFunction(
-					[this]() {
-						imp_->start();
-					}));
+				imp_->start();
+		/*		imp_->pOSG_->addCommand(new DbCommandFunction(
+					[this]() {*/
+						
+			//		}));
 			}
 		}
 	};
@@ -171,8 +173,8 @@ void HighlightSystem::Impl::create_first_fbo()
 	first_fbo_->addPreDrawCallback(new FirstCameraPredrawCallback(first_fbo_, mainCamera, this));
 	
 	osg::ref_ptr<osg::Program> program = new osg::Program;
-	osg::Shader*			   vert = osgDB::readShaderFile(osg::Shader::VERTEX, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_first.vert");
-	osg::Shader*			   frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_first.frag");
+	osg::Shader*			   vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/outline_first.vert");
+	osg::Shader*			   frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/outline_first.frag");
 	program->addShader(vert);
 	program->addShader(frag);
 	first_fbo_->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
@@ -210,8 +212,8 @@ void HighlightSystem::Impl::create_secend_fbo()
 
 		osg::StateSet*			   ss	  = geode->getOrCreateStateSet();
 		osg::ref_ptr<osg::Program> program = new osg::Program;
-		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_second.vert");
-		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_second.frag");
+		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/outline_second.vert");
+		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/outline_second.frag");
 		program->addShader(vert);
 		program->addShader(frag);
 		ss->addUniform(new osg::Uniform("baseTexture", 0));
@@ -289,8 +291,8 @@ void HighlightSystem::Impl::create_blur_fbo()
 			ss->setTextureAttributeAndModes(0, i % 2 == 0 ? second_texture_ : first_texture_, osg::StateAttribute::ON);
 
 			osg::ref_ptr<osg::Program> program = new osg::Program;
-			osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_blur.vert");
-			osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_blur.frag");
+			osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/outline_blur.vert");
+			osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/outline_blur.frag");
 			program->addShader(vert);
 			program->addShader(frag);
 			ss->addUniform(new osg::Uniform("baseTexture", 0));
@@ -331,8 +333,8 @@ void HighlightSystem::Impl::create_hud(osg::Texture2D* texture)
 		ss->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
 
 		osg::ref_ptr<osg::Program> program = new osg::Program;
-		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_final.vert");
-		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, DbSystemUtil::GetApplicationPath() + "Resources/shader/outline_final.frag");
+		osg::Shader*			   vert	= osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/outline_final.vert");
+		osg::Shader*			   frag	= osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/outline_final.frag");
 		program->addShader(vert);
 		program->addShader(frag);
 		ss->addUniform(new osg::Uniform("baseTexture", 0));
@@ -381,22 +383,22 @@ void HighlightSystem::Impl::start()
 }
 
 //--------------------------HighlightSystem------------------------
-HighlightSystem::HighlightSystem(CViewControlData* pOSG)
+HighlightSystem::HighlightSystem(osgViewer::Viewer* pOSG)
 {
 	impl		= new Impl;
 	impl->pOSG_ = pOSG;
-	pOSG->GetRoot()->addChild(impl->highlightRoot_);
+	//pOSG->GetRoot()->addChild(impl->highlightRoot_);
 	impl->highlightRoot_->setNodeMask(0);
 
-	pOSG->addCommand(new DbCommandFunction(
-		[this]() {
-			impl->start();
-		}));
+	//pOSG->addCommand(new DbCommandFunction(
+	//	[this]() {
+	//		impl->start();
+//		}));
 }
 
 HighlightSystem::~HighlightSystem()
 {
-	SAFE_DELETE(impl);
+	double impl;
 }
 
 void HighlightSystem::addHighlight(osg::Node* pNode)

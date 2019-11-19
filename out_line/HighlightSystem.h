@@ -1,24 +1,21 @@
 #pragma once
-#include "C\thCoreHeader.h"
-#include "C\thCoreHeader.h"
 #include <vector>
 #include <osg/vec3>
 #include <osg/vec3d>
 #include <osg/vec4>
 #include <osg/Object>
 #include <osg/Matrixd>
-
-class CViewControlData;
+#include <osgViewer/Viewer>
 
 namespace osg
 {
 	class Node;
 };
 
-class TH_CORE_API HighlightSystem
+class HighlightSystem
 {
 public:
-	HighlightSystem(CViewControlData* pOSG);
+	HighlightSystem(osgViewer::Viewer* pOSG);
 	~HighlightSystem();
 
 	void addHighlight(osg::Node* pNode);
