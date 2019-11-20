@@ -95,8 +95,9 @@ osg::Geometry* createExtrusion(osg::Vec3Array*  vertices,
 
 osg::Node* CreateCullModel()
 {
-	osg::ref_ptr<osg::Group> group = new osg::Group;
-
+	//osg::ref_ptr<osg::Group> group = new osg::Group;
+	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+	
 	std::string								   digRoot("0-0-3\\");
 	std::string								   digFile;
 	std::vector<osg::ref_ptr<osg::Vec3dArray>> masks;
@@ -109,6 +110,9 @@ osg::Node* CreateCullModel()
 		masks.push_back(points);
 	}
 
+	osg::Vec3d origin = masks.front()->front();
+	trans->setMatrix(osg::Matrix::translate(origin));
+
 	osg::ref_ptr<osg::Vec3Array> pm;
 	osg::ref_ptr<osg::Geode>	 geode;
 	osg::Vec3					 direction(0.0f, 0.0f, 1.0f);
@@ -118,15 +122,15 @@ osg::Node* CreateCullModel()
 		pm = new osg::Vec3Array(mask->size());
 		for (size_t i = 0; i < mask->size(); i++)
 		{
-			pm->at(i).set(mask->at(i).x(), mask->at(i).y(), 1789.0);
+			pm->at(i).set(osg::Vec3d(mask->at(i).x(), mask->at(i).y(), 1789.0)  - origin);
 		}
 		geode = new osg::Geode;
 		geode->addDrawable(createExtrusion(pm.get(), direction,
 										   length));
-		group->addChild(geode.get());
+		trans->addChild(geode.get());
 	}
 
-	return group.release();
+	return trans.release();
 }
 
 int main()
