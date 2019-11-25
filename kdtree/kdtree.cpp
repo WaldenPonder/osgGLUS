@@ -35,14 +35,14 @@ struct Node
 	Node* p = nullptr;
 };
 
-void build(POINTS& pts, int plane, Node* node)
+void build(POINTS& pts, int plane, Node* parent)
 {
 	if (pts.size() < 2) return;
 
 	POINTS l, r;
-	split(pts, plane, node, l, r);
-	build(l, plane + 1, node->l);
-	build(r, plane + 1, node->r);
+	split(pts, plane, parent, l, r);
+	build(l, plane + 1, parent->l);
+	build(r, plane + 1, parent->r);
 }
 
 void split(POINTS& origin, int plane, Node* node, POINTS& left, POINTS& right)
