@@ -15,17 +15,17 @@ struct Point
 	{
 	}
 
-	bool operator==(Point& o)
+	bool operator==(const Point& o)
 	{
 		return o.x == x && o.y == y && o.z == z;
 	}
 
-	bool operator!=(Point& o)
+	bool operator!=(const Point& o)
 	{
 		return !operator==(o);
 	}
 
-	float get(int level)
+	float get(int level) const
 	{
 		if (level % 2 == 0)
 			return x;
@@ -70,22 +70,25 @@ void split(POINTS& origin, int plane, Node* node, POINTS& left, POINTS& right)
 
 	if (origin.size() >= 3)
 	{
-		left		   = POINTS(origin.begin(), origin.begin() + mid);
-		node->l		   = new Node;
-		node->l->p	   = node;
-		node->l->level = plane + 1;
+		left	  = POINTS(origin.begin(), origin.begin() + mid);
+		Node* ln  = new Node;
+		node->l	  = ln;
+		ln->p	  = node;
+		ln->level = plane + 1;
 
-		right		   = POINTS(origin.begin() + mid + 1, origin.end());
-		node->r		   = new Node;
-		node->r->p	   = node;
-		node->r->level = plane + 1;
+		right	  = POINTS(origin.begin() + mid + 1, origin.end());
+		Node* rn  = new Node;
+		node->r	  = rn;
+		rn->p	  = node;
+		rn->level = plane + 1;
 	}
 	else if (origin.size() == 2)
 	{
-		left		   = POINTS(origin.begin(), origin.begin() + mid);
-		node->l		   = new Node;
-		node->l->p	   = node;
-		node->l->level = plane + 1;
+		left	  = POINTS(origin.begin(), origin.begin() + mid);
+		Node* ln  = new Node;
+		node->l	  = ln;
+		ln->p	  = node;
+		ln->level = plane + 1;
 	}
 }
 
@@ -106,6 +109,37 @@ void build(POINTS& pts, int plane, Node* node)
 	build(r, plane + 1, node->r);
 }
 
+//--------------------------------------------------search
+Node* search(Node* node, const Point& pt)
+{
+	if (node->val == pt) return node;
+
+	float val	 = node->val.get(node->level);
+	float target = pt.get(node->level);
+
+	if (val == target)
+	{
+		return node;
+	}
+	else if (val > target)
+	{
+		return search(node->l, pt);
+	}
+	else
+	{
+		return search(node->r, pt);
+	}
+}
+
+//--------------------------------------------------search nearest
+void search_nearest(Node* node, const Point& pt)
+{
+	Node* n = search(node, pt);
+
+
+
+}
+
 int main()
 {
 	PTs.push_back(Point(7, 2));
@@ -114,8 +148,9 @@ int main()
 	PTs.push_back(Point(4, 7));
 	PTs.push_back(Point(8, 1));
 	PTs.push_back(Point(9, 6));
+	PTs.push_back(Point(1, 9));
 
-	Node* root = new Node;
+	Node* root	= new Node;
 	root->level = 0;
 	build(PTs, 0, root);
 
