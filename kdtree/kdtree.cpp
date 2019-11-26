@@ -7,7 +7,7 @@ using namespace std;
 struct Point
 {
 	float x, y, z;
-	
+
 	Point() {}
 	Point(float x_, float y_, float z_ = 0) : x(x_), y(y_), z(z_)
 	{
@@ -15,8 +15,10 @@ struct Point
 
 	float get(int plane)
 	{
-		if (plane % 2 == 0) return x;
-		else return y;
+		if (plane % 2 == 0)
+			return x;
+		else
+			return y;
 	}
 };
 
@@ -28,7 +30,7 @@ struct Node
 	Node() {}
 
 	Point val;
-	int plane;
+	int   plane;
 
 	Node* l = nullptr;
 	Node* r = nullptr;
@@ -56,7 +58,8 @@ void split(POINTS& origin, int plane, Node* node, POINTS& left, POINTS& right)
 //--------------------------------------------------build
 void build(POINTS& pts, int plane, Node* node)
 {
-	if (pts.size() == 0) return;
+	if (pts.size() == 0)
+		return;
 	else if (pts.size() == 1)
 	{
 		node->val = pts[0];
@@ -77,8 +80,8 @@ int main()
 	PTs.push_back(Point(4, 7));
 	PTs.push_back(Point(8, 1));
 	PTs.push_back(Point(9, 6));
-	
-	Node* root = new Node;
+
+	Node* root  = new Node;
 	root->plane = 0;
 
 	build(PTs, 0, root);
