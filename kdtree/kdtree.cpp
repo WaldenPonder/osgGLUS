@@ -185,57 +185,48 @@ Node* search(Node* node, const Point& pt)
 }
 
 //--------------------------------------------------search nearest
-Point search_nearest(Node* n, const Point& pt)
+void search_nearest(Node* n, const Point& pt, Point& ret)
 {
+	if (!n) return;
+
 	float dis = n->val.dis(pt);
 
 	if (dis == 0)
 	{
-		return pt;
-	}
-	else if (dis < n->disPlane(pt))	 //减枝， 不需要搜索兄弟节点
+		ret = pt;
+	}	
+	else if (dis < n->disPlane(pt) || n->sibing() == nullptr)	 //减枝， 不需要搜索兄弟节点
 	{
 		if (n->parent)
 		{
 			float dp = n->parent->val.dis(pt);
 			if (dp < dis)
 			{
-				return search_nearest(n->parent, pt);
+				ret = n->parent->val;
 			}
-		}
 
-		return n->val;
+			search_nearest(n->parent, pt, ret);
+		}
+		else
+		{
+			if (n->val.dis(pt) < ret.dis(pt))
+				ret = n->val;
+		}
 	}
 	else if (n->sibing())
 	{
 		float dp = n->sibing()->val.dis(pt);
 		if (dp < dis)
 		{
-			return search_nearest(n->sibing(), pt);
+			ret = n->sibing()->val;
+			search_nearest(n->sibing(), pt, ret);
 		}
-		else if (n->parent)
+		else
 		{
-			float dp = n->parent->val.dis(pt);
-			if (dp < dis)
-			{
-				return search_nearest(n->parent, pt);
-			}
-		}
-		return n->val;
-	}
-	else
-	{
-		//比较当前节点和父节点
-		if (n->parent)
-		{
-			float dp = n->parent->val.dis(pt);
-			if (dp < dis)
-			{
-				return search_nearest(n->parent, pt);
-			}
-		}
-
-		return n->val;
+			if (n->val.dis(pt) < ret.dis(pt))
+				ret = n->val;
+			search_nearest(n->parent, pt, ret);
+		}		
 	}
 }
 
@@ -254,10 +245,11 @@ int main()
 	build(PTs, 0, root);
 
 	//找到叶节点
-	Point pt(2, 4.5);
+	Point pt(7, 3.5);
 	Node* n = search(root, pt);
 
-	Point ret = search_nearest(n, pt);
+	Point ret;
+	search_nearest(n, pt, ret);
 
 	getchar();
 }
