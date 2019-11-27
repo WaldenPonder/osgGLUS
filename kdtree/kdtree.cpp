@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <random>
+#include <time.h>
+
 using namespace std;
 
 //https://blog.csdn.net/ye1215172385/article/details/80214776
@@ -88,6 +91,11 @@ struct Node
 		return nullptr;
 	}
 
+	inline float splitLine() const
+	{
+		return val.get(level);
+	}
+
 	Point val;
 	int	  level;
 
@@ -99,18 +107,7 @@ struct Node
 //--------------------------------------------------split
 void split(POINTS& origin, int plane, Node* node, POINTS& left, POINTS& right)
 {
-	//sort(origin.begin(), origin.end(), [=](auto& p1, auto& p2) { p1.get(plane) < p2.get(plane); });
-
-	for (int i = 0; i < origin.size(); i++)
-	{
-		for (int j = i + 1; j < origin.size(); j++)
-		{
-			if (origin[j].get(plane) < origin[i].get(plane))
-			{
-				std::swap(origin[i], origin[j]);
-			}
-		}
-	}
+	sort(origin.begin(), origin.end(), [=](Point& p1, Point& p2) { return p1.get(plane) < p2.get(plane); });
 
 	int mid	  = origin.size() / 2;
 	node->val = origin[mid];
@@ -185,71 +182,118 @@ Node* search(Node* node, const Point& pt)
 }
 
 //--------------------------------------------------search nearest
-void search_nearest(Node* n, const Point& pt, Point& ret)
+vector<Node*> nodes;
+void search_nearest(Node* n, const Point& target, Point& ret, float& DIS)
 {
 	if (!n) return;
 
-	float dis = n->val.dis(pt);
+	float dis = n->val.dis(target);
 
-	if (dis == 0)
+	if (dis <= DIS)
 	{
-		ret = pt;
-	}	
-	else if (dis < n->disPlane(pt) || n->sibing() == nullptr)	 //减枝， 不需要搜索兄弟节点
-	{
-		if (n->parent)
-		{
-			float dp = n->parent->val.dis(pt);
-			if (dp < dis)
-			{
-				ret = n->parent->val;
-			}
-
-			search_nearest(n->parent, pt, ret);
-		}
-		else
-		{
-			if (n->val.dis(pt) < ret.dis(pt))
-				ret = n->val;
-		}
+		DIS = dis;
+		ret = n->val;
 	}
-	else if (n->sibing())
+	nodes.push_back(n);
+
+	float line = n->splitLine();
+
+	if (target.get(n->level) + DIS < line)
 	{
-		float dp = n->sibing()->val.dis(pt);
-		if (dp < dis)
-		{
-			ret = n->sibing()->val;
-			search_nearest(n->sibing(), pt, ret);
-		}
-		else
-		{
-			if (n->val.dis(pt) < ret.dis(pt))
-				ret = n->val;
-			search_nearest(n->parent, pt, ret);
-		}		
+		search_nearest(n->l, target, ret, DIS);
+	}
+	else if (target.get(n->level) - DIS > line)
+	{
+		search_nearest(n->r, target, ret, DIS);
+	}
+	else
+	{
+		search_nearest(n->l, target, ret, DIS);
+		search_nearest(n->r, target, ret, DIS);
 	}
 }
 
 int main()
 {
-	PTs.push_back(Point(7, 2));
-	PTs.push_back(Point(5, 4));
-	PTs.push_back(Point(2, 3));
-	PTs.push_back(Point(4, 7));
-	PTs.push_back(Point(8, 1));
-	PTs.push_back(Point(9, 6));
-	PTs.push_back(Point(1, 9));
+	std::default_random_engine		   eng(time(NULL));
+	std::uniform_int_distribution<int> rand(0, 100000);
+
+	for (int i = 0; i < 10000; i++)
+	{
+		float x = rand(eng);
+		float y = rand(eng);
+
+		PTs.push_back(Point(x, y));
+	}
 
 	Node* root	= new Node;
 	root->level = 0;
 	build(PTs, 0, root);
 
-	//找到叶节点
-	Point pt(7, 3.5);
-	Node* n = search(root, pt);
+	POINTS pts;
+	POINTS ret1, ret2;
 
-	Point ret;
-	search_nearest(n, pt, ret);
+	for (int i = 0; i < 3000; i++)
+	{
+		float x = rand(eng);
+		float y = rand(eng);
+		pts.push_back(Point(x, y));
+	}
+	vector<float> dis1(pts.size()), dis2(pts.size());
 
+	//--------------------------------------------------TEST KD TREE
+	auto t = clock();
+	{
+		int i = 0;
+		for (const Point& pt : pts)
+		{
+			Node* n = search(root, pt);
+
+			Point ret = n->val;
+			float dis = ret.dis(pt);
+			search_nearest(root, pt, ret, dis);
+			dis1[i++] = dis;
+			ret1.push_back(ret);
+		}
+
+		cout << "KD: " << (clock() - t) << endl;
+	}
+
+	//--------------------------------------------------NORMAL
+	t = clock();
+	{
+		int j = 0;
+		for (const Point& pt : pts)
+		{
+			Point ret;
+			float dis = FLT_MAX;
+			for (int i = 0; i < PTs.size(); i++)
+			{
+				float tmp = PTs[i].dis(pt);
+				if (dis > tmp)
+				{
+					dis		= tmp;
+					dis2[j] = dis;
+					ret		= PTs[i];
+				}
+			}
+			j++;
+			ret2.push_back(ret);
+		}
+
+		cout << "NORMAL: " << (clock() - t) << endl;
+	}
+
+	for (size_t i = 0; i < ret1.size(); i++)
+	{
+		if (ret1[i] != ret2[i])
+		{
+			cout << "DIS: " << dis1[i] << "\t" << dis2[i] << "    ";
+			cout << "TAR: " << pts[i].x << "\t" << pts[i].y << "  \t  RET1: ";
+			cout << ret1[i].x << "\t" << ret1[i].y << "\t     RET2: " << ret2[i].x << "\t" << ret2[i].y << endl;
+		}
+	}
+
+	cout << "FINISHED\n";
 	getchar();
 }
