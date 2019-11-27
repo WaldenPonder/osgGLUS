@@ -6,6 +6,8 @@ using namespace std;
 
 //https://blog.csdn.net/ye1215172385/article/details/80214776
 
+#define DIM 2
+
 struct Point
 {
 	float x, y, z;
@@ -25,12 +27,27 @@ struct Point
 		return !operator==(o);
 	}
 
-	float get(int level) const
+	inline float get(int level) const
 	{
-		if (level % 2 == 0)
+		int dim = level % DIM;
+
+		if (dim == 0)
 			return x;
-		else
+		else if (dim == 1)
 			return y;
+		else
+			return z;
+	}
+
+	inline float dis(const Point& pt) const
+	{
+		return sqrt(dis2(pt));
+	}
+
+	inline float dis2(const Point& pt) const
+	{
+		float v = pow((pt.x - x), 2) + pow((pt.y - y), 2) + pow((pt.z - z), 2);
+		return v;
 	}
 };
 
@@ -41,12 +58,42 @@ struct Node
 {
 	Node() {}
 
+	inline float disPlane(const Point& pt) const
+	{
+		int dim = level % DIM;
+		if (dim == 0)
+		{
+			return fabs(pt.x - val.x);
+		}
+		else if (dim == 1)
+		{
+			return fabs(pt.y - val.y);
+		}
+		else if (dim == 2)
+		{
+			return fabs(pt.z - val.z);
+		}
+	}
+
+	inline Node* sibing() const
+	{
+		if (parent)
+		{
+			if (this == parent->l)
+				return parent->r;
+			else
+				return parent->l;
+		}
+
+		return nullptr;
+	}
+
 	Point val;
 	int	  level;
 
-	Node* l = nullptr;
-	Node* r = nullptr;
-	Node* p = nullptr;
+	Node* l		 = nullptr;
+	Node* r		 = nullptr;
+	Node* parent = nullptr;
 };
 
 //--------------------------------------------------split
@@ -70,25 +117,25 @@ void split(POINTS& origin, int plane, Node* node, POINTS& left, POINTS& right)
 
 	if (origin.size() >= 3)
 	{
-		left	  = POINTS(origin.begin(), origin.begin() + mid);
-		Node* ln  = new Node;
-		node->l	  = ln;
-		ln->p	  = node;
-		ln->level = plane + 1;
+		left	   = POINTS(origin.begin(), origin.begin() + mid);
+		Node* ln   = new Node;
+		node->l	   = ln;
+		ln->parent = node;
+		ln->level  = plane + 1;
 
-		right	  = POINTS(origin.begin() + mid + 1, origin.end());
-		Node* rn  = new Node;
-		node->r	  = rn;
-		rn->p	  = node;
-		rn->level = plane + 1;
+		right	   = POINTS(origin.begin() + mid + 1, origin.end());
+		Node* rn   = new Node;
+		node->r	   = rn;
+		rn->parent = node;
+		rn->level  = plane + 1;
 	}
 	else if (origin.size() == 2)
 	{
-		left	  = POINTS(origin.begin(), origin.begin() + mid);
-		Node* ln  = new Node;
-		node->l	  = ln;
-		ln->p	  = node;
-		ln->level = plane + 1;
+		left	   = POINTS(origin.begin(), origin.begin() + mid);
+		Node* ln   = new Node;
+		node->l	   = ln;
+		ln->parent = node;
+		ln->level  = plane + 1;
 	}
 }
 
@@ -112,6 +159,8 @@ void build(POINTS& pts, int plane, Node* node)
 //--------------------------------------------------search
 Node* search(Node* node, const Point& pt)
 {
+	if (!node) return nullptr;
+
 	if (node->val == pt) return node;
 
 	float val	 = node->val.get(node->level);
@@ -123,21 +172,71 @@ Node* search(Node* node, const Point& pt)
 	}
 	else if (val > target)
 	{
-		return search(node->l, pt);
+		if (node->l)
+			return search(node->l, pt);
 	}
 	else
 	{
-		return search(node->r, pt);
+		if (node->r)
+			return search(node->r, pt);
 	}
+
+	return node;
 }
 
 //--------------------------------------------------search nearest
-void search_nearest(Node* node, const Point& pt)
+Point search_nearest(Node* n, const Point& pt)
 {
-	Node* n = search(node, pt);
+	float dis = n->val.dis(pt);
 
+	if (dis == 0)
+	{
+		return pt;
+	}
+	else if (dis < n->disPlane(pt))	 //减枝， 不需要搜索兄弟节点
+	{
+		if (n->parent)
+		{
+			float dp = n->parent->val.dis(pt);
+			if (dp < dis)
+			{
+				return search_nearest(n->parent, pt);
+			}
+		}
 
+		return n->val;
+	}
+	else if (n->sibing())
+	{
+		float dp = n->sibing()->val.dis(pt);
+		if (dp < dis)
+		{
+			return search_nearest(n->sibing(), pt);
+		}
+		else if (n->parent)
+		{
+			float dp = n->parent->val.dis(pt);
+			if (dp < dis)
+			{
+				return search_nearest(n->parent, pt);
+			}
+		}
+		return n->val;
+	}
+	else
+	{
+		//比较当前节点和父节点
+		if (n->parent)
+		{
+			float dp = n->parent->val.dis(pt);
+			if (dp < dis)
+			{
+				return search_nearest(n->parent, pt);
+			}
+		}
 
+		return n->val;
+	}
 }
 
 int main()
@@ -153,6 +252,12 @@ int main()
 	Node* root	= new Node;
 	root->level = 0;
 	build(PTs, 0, root);
+
+	//找到叶节点
+	Point pt(2, 4.5);
+	Node* n = search(root, pt);
+
+	Point ret = search_nearest(n, pt);
 
 	getchar();
 }
