@@ -7,6 +7,9 @@
 #include <osg/KdTree>
 #include <random>
 
+//http://www.codinglabs.net/article_physically_based_rendering.aspx
+//https://learnopengl.com/PBR/IBL/Specular-IBL
+//https://metashapes.com/blog/realtime-image-based-lighting-using-spherical-harmonics/
 
 int main()
 {
