@@ -16,7 +16,7 @@
 //从HDR文件，得到带贴图的CUBE
 //得到辐照度cube map
 
-osg::TextureCubeMap* equirectangular2Cubemap(osg::Group* root)
+osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 {
 	osg::Node* n = osgDB::readNodeFile(shader_dir() + "/cube.obj");
 
@@ -86,7 +86,7 @@ osg::TextureCubeMap* equirectangular2Cubemap(osg::Group* root)
 	return env_cube_texture;
 }
 
-void renderCubeMap(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
+void envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 {
 	osg::Node* n = osgDB::readNodeFile(shader_dir() + "/cube.obj");
 	root->addChild(n);
@@ -104,8 +104,8 @@ int main()
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
 		
-	osg::TextureCubeMap* env_cube_texture = equirectangular2Cubemap(root);
-	renderCubeMap(root, env_cube_texture);
+	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(root);
+	envMap2IrradianceMap(root, env_cube_texture);
 
 	view.setSceneData(root);
 	add_event_handler(view);
