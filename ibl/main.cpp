@@ -1,7 +1,4 @@
-﻿// custom_drawable.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
-
-#include "pch.h"
+﻿#include "pch.h"
 #include "../common/common.h"
 #include <osg/io_utils>
 #include <osg/KdTree>
@@ -25,7 +22,7 @@ osg::Node* readCube()
 void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matrix>& view_mats, int size)
 {
 	cube_texture->setTextureSize(size, size);
-	cube_texture->setInternalFormat(GL_RGBA16F_ARB);
+	cube_texture->setInternalFormat(GL_RGB16F_ARB);
 	cube_texture->setSourceFormat(GL_RGB);
 	cube_texture->setSourceType(GL_FLOAT);
 	cube_texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
@@ -44,13 +41,14 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 
 osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 {
+	const float TEXTURE_SIZE = 1024.f;
 	osg::Node* n = readCube();
 
 	//equirectangular To Cubemap
 	osg::TextureCubeMap* env_cube_texture = new osg::TextureCubeMap;
 	vector<osg::Matrix>	 view_mats;
 
-	cubeTextureAndViewMats(env_cube_texture, view_mats, 512);
+	cubeTextureAndViewMats(env_cube_texture, view_mats, TEXTURE_SIZE);
 
 	for (int i = 0; i < 6; i++)
 	{
@@ -61,7 +59,7 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
 		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_4f, 1., .1f, 10.f));
-		fbo->setViewport(0, 0, 512, 512);
+		fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 		fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 		fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		fbo->attach(osg::Camera::COLOR_BUFFER, env_cube_texture, 0, i);
@@ -75,6 +73,7 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 
 	osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_Env.hdr");
 	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_8k.jpg");
 
 	osg::Texture2D* texture = new osg::Texture2D(img);
 	texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
@@ -82,7 +81,7 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
 	texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
 
-	texture->setInternalFormat(GL_RGBA16F_ARB);
+	texture->setInternalFormat(GL_RGB16F_ARB);
 	texture->setSourceFormat(GL_RGB);
 	texture->setSourceType(GL_FLOAT);
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
@@ -128,6 +127,24 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 	return irradiance_map;
 }
 
+void renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
+{
+	osg::Node*						n = readCube();
+	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
+	const float						s = 50.f;
+	pat->setScale(osg::Vec3(s, s, s));
+	pat->setAttitude(osg::Quat(-osg::PI_2f, osg::X_AXIS));
+	pat->addChild(n);
+	root->addChild(pat);
+
+	osg::Program* p = new osg::Program;
+	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl_skybox.vert"));
+	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl_skybox.frag"));
+	n->getOrCreateStateSet()->setAttributeAndModes(p);
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, env_cube_texture);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("env_cube_texture", 0));
+}
+
 void renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
 {
 	osg::Node*						n	= osgDB::readNodeFile("cow.osg");
@@ -149,10 +166,11 @@ void renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
 int main()
 {
 	osgViewer::Viewer view;
-	osg::Group*		  root = new osg::Group;
+	osg::Group* root = new osg::Group;
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(root);
 	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(root, env_cube_texture);
+	renderSkyBox(root, env_cube_texture);
 	renderScene(root, irradiance_map);
 
 	view.setSceneData(root);
