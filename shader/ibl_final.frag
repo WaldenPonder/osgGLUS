@@ -6,7 +6,7 @@ uniform samplerCube irradiance_map;
 
 const float PI = 3.14159265359;
 
-#define LIGHT_NUMS 1
+#define LIGHT_NUMS 2
 
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -53,16 +53,18 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 void main()
 {		
 	// material parameters
-	vec3 albedo = vec3(0.5);
-	float metallic = .4f;
-	float roughness = .4f;
-	float ao = 1.f;
+	vec3 albedo = vec3(0.8);
+	float metallic = .6;
+	float roughness = .3;
+	float ao = 1.;
 
 	// lights
 	vec3 lightPositions[LIGHT_NUMS];
-	lightPositions[0] = vec3(10., 0, 0);
-	vec3 lightColors[1];
+	lightPositions[0] = vec3(100., 0, 0);
+	lightPositions[1] = vec3(-100., 0, 0);
+	vec3 lightColors[LIGHT_NUMS];
 	lightColors[0] = vec3(1);
+	lightColors[1] = vec3(1);
 
 	vec3 camPos = vec3(0.);
 
@@ -124,7 +126,10 @@ void main()
     // vec3 ambient = vec3(0.002);
     
     vec3 color = ambient + Lo;
-
+	
+	////////////////////////////////////////////////////////////////////wq
+    color = diffuse;
+	
     // HDR tonemapping
     color = color / (color + vec3(1.0));
     // gamma correct
