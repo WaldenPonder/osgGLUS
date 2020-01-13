@@ -20,7 +20,8 @@ void main()
     vec3 right = cross(up, N);
     up            = cross(N, right);
        
-    float sampleDelta = 0.025;
+    //float sampleDelta = 0.025;
+	float sampleDelta = 0.025;
     float nrSamples = 0.0;
     for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
     {
@@ -38,4 +39,5 @@ void main()
     irradiance = PI * irradiance * (1.0 / float(nrSamples));
     
     gl_FragColor = vec4(irradiance, 1.0);
+	//gl_FragColor = vec4(0,1,1,1);
 }

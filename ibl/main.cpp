@@ -23,6 +23,10 @@ osg::TextureCubeMap* equirectangular2Cubemap(osg::Group* root)
 	//equirectangular To Cubemap
 	osg::TextureCubeMap* env_cube_texture = new osg::TextureCubeMap;
 	{
+		env_cube_texture->setTextureSize(512, 512);
+		env_cube_texture->setInternalFormat(GL_RGBA16F_ARB);
+		env_cube_texture->setSourceFormat(GL_RGB);
+		env_cube_texture->setSourceType(GL_FLOAT);
 		env_cube_texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
 		env_cube_texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
 		env_cube_texture->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
@@ -44,14 +48,17 @@ osg::TextureCubeMap* equirectangular2Cubemap(osg::Group* root)
 	{
 		osg::Camera* first_fbo = new osg::Camera;
 		root->addChild(first_fbo);
-		first_fbo->setViewMatrix(view_mats[i]);
+		
 		first_fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		first_fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+		//first_fbo->setViewMatrix(osg::Matrix::identity());
+		//first_fbo->setProjectionMatrixAsOrtho2D(0, 100, 0, 100);
+		first_fbo->setViewMatrix(view_mats[i]);
 		first_fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_4f, 1., .1f, 10.f));
 		first_fbo->setViewport(0, 0, 512, 512);
 		first_fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 		first_fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		first_fbo->attach(osg::Camera::COLOR_BUFFER, env_cube_texture, 0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
+		first_fbo->attach(osg::Camera::COLOR_BUFFER, env_cube_texture, 0, i);
 		first_fbo->addChild(n);
 	}
 	
@@ -70,7 +77,7 @@ osg::TextureCubeMap* equirectangular2Cubemap(osg::Group* root)
 	texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
 
 	texture->setInternalFormat(GL_RGBA16F_ARB);
-	texture->setSourceFormat(GL_RGBA);
+	texture->setSourceFormat(GL_RGB);
 	texture->setSourceType(GL_FLOAT);
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture);
