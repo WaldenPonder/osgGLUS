@@ -12,12 +12,68 @@
 
 osg::Node* readCube()
 {
-	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
-	osg::Node*						n	= osgDB::readNodeFile(shader_dir() + "/cube.obj");
-	pat->addChild(n);
-	pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
+	//osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
+	//osg::Node*						n	= osgDB::readNodeFile(shader_dir() + "/cube.obj");
+	//pat->addChild(n);
+	//pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
+
+	osg::Geode* geode = new osg::Geode;
+	osg::Geometry* geometry = new osg::Geometry;
+	geode->addDrawable(geometry);
+	geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, 36));
+	osg::Vec3Array* arr = new osg::Vec3Array;
+	geometry->setVertexArray(arr);
+	geometry->setUseVertexBufferObjects(true);
+
+	// back face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+
+	//front face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+
+	// left face
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+
+	// right face
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+
+	// bottom face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+
+	//top face
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
 	   	 
-	return pat;
+	return geode;
 }
 
 void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matrix>& view_mats, int size)
@@ -50,12 +106,11 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	vector<osg::Matrix>	 view_mats;
 
 	cubeTextureAndViewMats(env_cube_texture, view_mats, TEXTURE_SIZE);
-	root->addChild(n);
 
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
-		//root->addChild(fbo);
+		root->addChild(fbo);
 
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
@@ -172,7 +227,7 @@ int main()
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(root);
 	//osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(root, env_cube_texture);
-	//renderSkyBox(root, env_cube_texture);
+	renderSkyBox(root, env_cube_texture);
 	//renderScene(root, irradiance_map);
 
 	view.setSceneData(root);
