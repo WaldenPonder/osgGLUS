@@ -32,12 +32,16 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 	cube_texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
 	cube_texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
 
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(-1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, 1.0f)));
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, -1.0f)));
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 0.0f, 1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
-	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 0.0f, -1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
+	float DISTANCE = 73.f;
+
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(-DISTANCE, 0.0f, 0.0f), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(DISTANCE, 0.0f, 0.0f), osg::Vec3(-1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
+	
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, DISTANCE, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, 1.0f)));
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, -DISTANCE, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, -1.0f)));
+
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, DISTANCE), osg::Vec3(0.0f, 0.0f, 1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
+	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, -DISTANCE), osg::Vec3(0.0f, 0.0f, -1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
 }
 
 osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
@@ -50,17 +54,16 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	vector<osg::Matrix>	 view_mats;
 
 	cubeTextureAndViewMats(env_cube_texture, view_mats, TEXTURE_SIZE);
-	root->addChild(n);
 
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
-		//root->addChild(fbo);
+		root->addChild(fbo);
 
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
-		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_4f, 1., .01f, 100.f));
+		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1, .1f, 10.f));
 		fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 		fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 		fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -73,9 +76,9 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_1.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_1.frag"));
 
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_Env.hdr");
+	osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_Env.hdr");
 	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
-	osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_8k.jpg");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_8k.jpg");
 
 	osg::Texture2D* texture = new osg::Texture2D(img);
 	texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
@@ -111,7 +114,7 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
-		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_4f, 1., .1f, 10.f));
+		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1., .1f, 10.f));
 		fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 		fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 		fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -165,21 +168,45 @@ void renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 0));
 }
 
+class CameraPostdrawCallback : public osg::Camera::DrawCallback
+{
+public:
+	osg::observer_ptr<osg::Group> once_group;
+	osg::observer_ptr<osg::Group> root;
+
+	virtual void operator()(osg::RenderInfo& renderInfo) const
+	{
+		if (root.get() && once_group.get())
+		{
+			root->removeChild(once_group.get());
+		}
+	}
+};
+
 int main()
 {
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
 
-	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(root);
-	//osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(root, env_cube_texture);
-	//renderSkyBox(root, env_cube_texture);
-	//renderScene(root, irradiance_map);
+	osg::Group* once_group = new osg::Group;
+	root->addChild(once_group);
+
+	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(once_group);
+	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(once_group, env_cube_texture);
+	renderSkyBox(root, env_cube_texture);
+	renderScene(root, irradiance_map);
 
 	view.setSceneData(root);
 	add_event_handler(view);
 	view.getCamera()->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 	view.realize();
+
+	CameraPostdrawCallback* callback = new CameraPostdrawCallback;
+	callback->root = root;
+	callback->once_group = once_group;
+
+	view.getCamera()->addPostDrawCallback(callback);
 
 	return view.run();
 }
