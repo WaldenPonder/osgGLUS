@@ -6,17 +6,85 @@
 #include <osg/TextureCubeMap>
 #include <random>
 
+//http://www.hdrlabs.com/sibl/archive.html
 //http://www.codinglabs.net/article_physically_based_rendering.aspx
 //https://learnopengl.com/PBR/IBL/Specular-IBL
 //https://metashapes.com/blog/realtime-image-based-lighting-using-spherical-harmonics/
 
+/*
+  纹理为什么会乱
+  位置为什么会乱
+*/
+
+//#define RENDER_SIMPLE_CUBE
+
+
 osg::Node* readCube()
 {
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
-	osg::Node*						n	= osgDB::readNodeFile(shader_dir() + "/cube.obj");
-	pat->addChild(n);
+	//osg::Node*						n	= osgDB::readNodeFile(shader_dir() + "/cube.obj");
+	//pat->addChild(n);
 	pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
-	   	 
+	
+	//cube 原本Y向上
+
+	osg::Geode* geode = new osg::Geode;
+	pat->addChild(geode);
+	osg::Geometry* geometry = new osg::Geometry;
+	geode->addDrawable(geometry);
+	geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, 36));
+	osg::Vec3Array* arr = new osg::Vec3Array;
+	geometry->setVertexArray(arr);
+	geometry->setUseVertexBufferObjects(true);
+
+	// back face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+
+	//front face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+
+	// left face
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+
+	// right face
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+
+	// bottom face
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));
+
+	//top face
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, -1.0f));
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
+
 	return pat;
 }
 
@@ -36,7 +104,7 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(-DISTANCE, 0.0f, 0.0f), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(DISTANCE, 0.0f, 0.0f), osg::Vec3(-1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
-	
+
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, DISTANCE, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, 1.0f)));
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, -DISTANCE, 0.0f), osg::Vec3(0.0f, -1.0f, 0.0f), osg::Vec3(0.0f, 0.0f, -1.0f)));
 
@@ -47,7 +115,7 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 {
 	const float TEXTURE_SIZE = 1024.f;
-	osg::Node* n = readCube();
+	osg::Node*	n			 = readCube();
 
 	//equirectangular To Cubemap
 	osg::TextureCubeMap* env_cube_texture = new osg::TextureCubeMap;
@@ -55,11 +123,13 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 
 	cubeTextureAndViewMats(env_cube_texture, view_mats, TEXTURE_SIZE);
 
+#ifdef RENDER_SIMPLE_CUBE
+	root->addChild(n);
+#else
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
 		root->addChild(fbo);
-
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
@@ -70,15 +140,22 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 		fbo->attach(osg::Camera::COLOR_BUFFER, env_cube_texture, 0, i);
 		fbo->addChild(n);
 	}
+#endif
 
 	//-------------------------------------------------------------设置shader
 	osg::Program* p = new osg::Program;
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_1.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_1.frag"));
 
-	osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/Playa_Sunrise/Playa_Sunrise_8k.jpg");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr");	
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg");
+
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
+	osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg");
+
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Walk_Of_Fame/Mans_Outside_Env.hdr");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/MonValley_Lookout/MonValley_A_LookoutPoint_Env.hdr");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Sierra_Madre_B/Sierra_Madre_B_Env.hdr");
 
 	osg::Texture2D* texture = new osg::Texture2D(img);
 	texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
@@ -114,7 +191,7 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
-		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1., .1f, 10.f));
+		fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1, .1f, 10.f));
 		fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 		fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 		fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -134,9 +211,9 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 
 void renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 {
-	osg::Node*						n = readCube();
+	osg::Node*						n	= readCube();
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
-	const float						s = 50.f;
+	const float						s	= 400.f;
 	pat->setScale(osg::Vec3(s, s, s));
 	pat->setAttitude(osg::Quat(-osg::PI_2f, osg::X_AXIS));
 	pat->addChild(n);
@@ -152,11 +229,18 @@ void renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 
 void renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
 {
-	osg::Node*						n	= osgDB::readNodeFile("cow.osg");
+	//osg::Node*						n = osgDB::readNodeFile("F:\\360Downloads\\model\\dddd.osgb");
+	//osg::Node*						n	= osgDB::readNodeFile("F:\\360Downloads\\model\\abc.osgb");
+	osg::Node* n = osgDB::readNodeFile("cow.osg");
+
+	osg::ComputeBoundsVisitor cbv;
+	n->accept(cbv);
+	osg::Vec3 center = cbv.getBoundingBox().center();
+
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
 	const float						s	= 1.f;
 	pat->setScale(osg::Vec3(s, s, s));
-	//pat->setAttitude(osg::Quat(osg::PI_2, osg::Z_AXIS));
+	pat->setPosition(-center);
 	pat->addChild(n);
 	root->addChild(pat);
 
@@ -170,7 +254,7 @@ void renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
 
 class CameraPostdrawCallback : public osg::Camera::DrawCallback
 {
-public:
+ public:
 	osg::observer_ptr<osg::Group> once_group;
 	osg::observer_ptr<osg::Group> root;
 
@@ -186,27 +270,34 @@ public:
 int main()
 {
 	osgViewer::Viewer view;
-	osg::Group* root = new osg::Group;
+	osg::Group*		  root = new osg::Group;
 
 	osg::Group* once_group = new osg::Group;
 	root->addChild(once_group);
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(once_group);
-	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(once_group, env_cube_texture);
-	renderSkyBox(root, env_cube_texture);
+
+#ifndef RENDER_SIMPLE_CUBE
+	osg::TextureCubeMap* irradiance_map = envMap2IrradianceMap(once_group, env_cube_texture);
+	
+	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
+	//osg::TextureCubeMap* irradiance_map = dynamic_cast<osg::TextureCubeMap*>(osgDB::readObjectFile(shader_dir() + "/ibl/irradiance_map.osgb"));
+
 	renderScene(root, irradiance_map);
+	renderSkyBox(root, env_cube_texture);
+	
+	CameraPostdrawCallback* callback = new CameraPostdrawCallback;
+	callback->root					 = root;
+	callback->once_group			 = once_group;
+
+	view.getCamera()->addPostDrawCallback(callback);
+#endif
 
 	view.setSceneData(root);
 	add_event_handler(view);
 	view.getCamera()->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 	view.realize();
-
-	CameraPostdrawCallback* callback = new CameraPostdrawCallback;
-	callback->root = root;
-	callback->once_group = once_group;
-
-	view.getCamera()->addPostDrawCallback(callback);
 
 	return view.run();
 }

@@ -9,3 +9,5 @@ x64
 /cull/0-0-3
 /shader/Playa_Sunrise
 /shader/Ridgecrest_Road
+/shader/ibl/hdr
+/shader/ibl/irradiance_map.osgb
