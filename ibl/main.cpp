@@ -50,9 +50,6 @@ osg::TextureCubeMap* equirectangular2Envmap()
 
 	cubeTextureAndViewMats(env_cube_texture, view_mats, TEXTURE_SIZE);
 
-#ifdef RENDER_SIMPLE_CUBE
-	root->addChild(n);
-#else
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
@@ -67,7 +64,6 @@ osg::TextureCubeMap* equirectangular2Envmap()
 		fbo->attach(osg::Camera::COLOR_BUFFER, env_cube_texture, 0, i);
 		fbo->addChild(n);
 	}
-#endif
 
 	//-------------------------------------------------------------设置shader
 	osg::Program* p = new osg::Program;
@@ -114,7 +110,6 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::TextureCubeMap* env_cube_texture)
 	{
 		osg::Camera* fbo = new osg::Camera;
 		g::draw_once_group->addChild(fbo);
-
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
@@ -178,8 +173,8 @@ osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map)
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_final.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_final.frag"));
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
-	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, irradiance_map);
-	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 0));
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(1, irradiance_map);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 1));
 	g::scene = pat;
 	return pat;
 }
@@ -194,8 +189,6 @@ int main()
 	g::draw_once_group			= draw_once_group;
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap();
-
-#ifndef RENDER_SIMPLE_CUBE
 	osg::TextureCubeMap* irradiance_map = envMap2IrradianceMap(env_cube_texture);
 
 	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
@@ -206,9 +199,8 @@ int main()
 
 	view.getCamera()->setEventCallback(new EventCallback);
 	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
-#endif
 
-	root->addChild(draw_once_group);
+	root->addChild(g::draw_once_group);
 	root->addChild(g::skybox);
 	root->addChild(g::scene);
 
