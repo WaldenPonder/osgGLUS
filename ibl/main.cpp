@@ -27,11 +27,15 @@
 
 namespace g
 {
-	osg::Node* skybox;
-	bool rotX;
-	bool rotY;
-	bool rotZ;
-}
+	osg::Group*						root;
+	osg::Node*						skybox;
+	osg::Group*						draw_once_group;
+	osg::PositionAttitudeTransform* scene;
+	bool							rotX	 = false;
+	bool							rotY	 = false;
+	bool							rotZ	 = false;
+	bool							clearRot = false;
+}  // namespace g
 
 osg::Node* readCube()
 {
@@ -40,7 +44,7 @@ osg::Node* readCube()
 	//pat->addChild(n);
 
 	// pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
-	
+
 	//cube 原本Y向上
 
 	osg::Geode* geode = new osg::Geode;
@@ -105,60 +109,59 @@ osg::Node* readCube()
 
 class CameraPostdrawCallback : public osg::Camera::DrawCallback
 {
-public:
-	osg::observer_ptr<osg::Group> once_group_;
-	osg::PositionAttitudeTransform* scene_;
-
+ public:
 	virtual void operator()(osg::RenderInfo& renderInfo) const
 	{
-		once_group_->setNodeMask(0);
-
-		if (g::rotX)
-		{
-			rot_ += delta;
-			scene_->setAttitude(osg::Quat(rot_, osg::X_AXIS));
-		}
-		else if (g::rotY)
-		{
-			rot_ += delta;
-			scene_->setAttitude(osg::Quat(rot_, osg::Y_AXIS));
-		}
-		else if (g::rotZ)
-		{
-			rot_ += delta;
-			scene_->setAttitude(osg::Quat(rot_, osg::Z_AXIS));
-		}
-		else
-		{
-			scene_->setAttitude(osg::Quat(0, osg::Z_AXIS));
-		}
+		g::draw_once_group->setNodeMask(0);
 	}
-
-	mutable float rot_ = 0;
-	float delta = .05;
 };
 
 class EventCallback : public osgGA::GUIEventHandler
 {
-public:
+ public:
+	mutable float rot_	= 0;
+	float		  delta = .05;
+
 	virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* nv)
 	{
+		osg::PositionAttitudeTransform* scene = g::scene;
+
+		if (g::rotX)
+		{
+			rot_ += delta;
+			scene->setAttitude(osg::Quat(rot_, osg::X_AXIS));
+		}
+		else if (g::rotY)
+		{
+			rot_ += delta;
+			scene->setAttitude(osg::Quat(rot_, osg::Y_AXIS));
+		}
+		else if (g::rotZ)
+		{
+			rot_ += delta;
+			scene->setAttitude(osg::Quat(rot_, osg::Z_AXIS));
+		}
+
 		if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
 		{
 			if (ea.getKey() == osgGA::GUIEventAdapter::KEY_X)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotX = true;
+				g::rotX						= true;
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Y)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotY = true;
+				g::rotY						= true;
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Z)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotZ = true;
+				g::rotZ						= true;
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Q)
+			{
+				g::scene->setAttitude(osg::Quat(0, osg::Z_AXIS));
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Space)
 			{
@@ -167,7 +170,7 @@ public:
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_O)
 			{
 				static bool flag = true;
-				flag = !flag;
+				flag			 = !flag;
 				g::skybox->setNodeMask(flag ? ~0 : 0);
 			}
 		}
@@ -183,7 +186,6 @@ struct ComputeBoundingSphereCallback : public osg::Node::ComputeBoundingSphereCa
 		return bs;
 	}
 };
-
 
 void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matrix>& view_mats, int size)
 {
@@ -209,7 +211,7 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, -DISTANCE), osg::Vec3(0.0f, 0.0f, -1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
 }
 
-osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
+osg::TextureCubeMap* equirectangular2Envmap()
 {
 	const float TEXTURE_SIZE = 1024.f;
 	osg::Node*	n			 = readCube();
@@ -226,7 +228,7 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
-		root->addChild(fbo);
+		g::draw_once_group->addChild(fbo);
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 		fbo->setViewMatrix(view_mats[i]);
@@ -244,8 +246,8 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_1.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_1.frag"));
 
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr");	
-	osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg");
+	osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr");
+	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg");
 
 	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
 	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg");
@@ -270,7 +272,7 @@ osg::TextureCubeMap* equirectangular2Envmap(osg::Group* root)
 	return env_cube_texture;
 }
 
-osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
+osg::TextureCubeMap* envMap2IrradianceMap(osg::TextureCubeMap* env_cube_texture)
 {
 	osg::Node* n = readCube();
 
@@ -283,7 +285,7 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 	for (int i = 0; i < 6; i++)
 	{
 		osg::Camera* fbo = new osg::Camera;
-		root->addChild(fbo);
+		g::draw_once_group->addChild(fbo);
 
 		fbo->setRenderOrder(osg::Camera::PRE_RENDER);
 		fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
@@ -306,7 +308,7 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::Group* root, osg::TextureCubeMap*
 	return irradiance_map;
 }
 
-osg::Node* renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
+osg::Node* renderSkyBox(osg::TextureCubeMap* env_cube_texture)
 {
 	osg::Node*						n	= readCube();
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
@@ -314,7 +316,6 @@ osg::Node* renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 	pat->setScale(osg::Vec3(s, s, s));
 	pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
 	pat->addChild(n);
-	root->addChild(pat);
 
 	osg::Program* p = new osg::Program;
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_skybox.vert"));
@@ -323,13 +324,13 @@ osg::Node* renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, env_cube_texture);
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("env_cube_texture", 0));
 	n->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-    n->getOrCreateStateSet()->setAttribute(new osg::Depth(osg::Depth::NEVER));
+	n->getOrCreateStateSet()->setAttribute(new osg::Depth(osg::Depth::NEVER));
 	pat->setComputeBoundingSphereCallback(new ComputeBoundingSphereCallback);
 	g::skybox = pat;
 	return pat;
 }
 
-osg::PositionAttitudeTransform* renderScene(osg::Group* root, osg::TextureCubeMap* irradiance_map)
+osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map)
 {
 	//osg::Node*						n = osgDB::readNodeFile("F:\\360Downloads\\model\\dddd.osgb");
 	//osg::Node*						n	= osgDB::readNodeFile("F:\\360Downloads\\model\\abc.osgb");
@@ -344,7 +345,6 @@ osg::PositionAttitudeTransform* renderScene(osg::Group* root, osg::TextureCubeMa
 	pat->setScale(osg::Vec3(s, s, s));
 	pat->setPosition(-center);
 	pat->addChild(n);
-	root->addChild(pat);
 
 	osg::Program* p = new osg::Program;
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_final.vert"));
@@ -352,7 +352,7 @@ osg::PositionAttitudeTransform* renderScene(osg::Group* root, osg::TextureCubeMa
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, irradiance_map);
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 0));
-
+	g::scene = pat;
 	return pat;
 }
 
@@ -360,28 +360,29 @@ int main()
 {
 	osgViewer::Viewer view;
 	osg::Group*		  root = new osg::Group;
+	g::root				   = root;
 
-	osg::Group* once_group = new osg::Group;
-	root->addChild(once_group);
+	osg::Group* draw_once_group = new osg::Group;
+	g::draw_once_group			= draw_once_group;
 
-	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap(once_group);
+	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap();
 
 #ifndef RENDER_SIMPLE_CUBE
-	osg::TextureCubeMap* irradiance_map = envMap2IrradianceMap(once_group, env_cube_texture);
-	
+	osg::TextureCubeMap* irradiance_map = envMap2IrradianceMap(env_cube_texture);
+
 	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
 	//osg::TextureCubeMap* irradiance_map = dynamic_cast<osg::TextureCubeMap*>(osgDB::readObjectFile(shader_dir() + "/ibl/irradiance_map.osgb"));
 
-	osg::Node* skybox = renderSkyBox(root, env_cube_texture);
-	osg::PositionAttitudeTransform* scene = renderScene(root, irradiance_map);
-	
-	CameraPostdrawCallback* callback = new CameraPostdrawCallback;
-	callback->once_group_			 = once_group;
-	callback->scene_ = scene;
+	osg::Node*						skybox = renderSkyBox(env_cube_texture);
+	osg::PositionAttitudeTransform* scene  = renderScene(irradiance_map);
 
-	view.getCamera()->addPostDrawCallback(callback);
 	view.getCamera()->setEventCallback(new EventCallback);
+	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
 #endif
+
+	root->addChild(draw_once_group);
+	root->addChild(g::skybox);
+	root->addChild(g::scene);
 
 	view.setSceneData(root);
 	add_event_handler(view);
