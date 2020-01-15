@@ -25,6 +25,14 @@
 牛的方向： X向右，Y向外，Z向上
 */
 
+namespace g
+{
+	osg::Node* skybox;
+	bool rotX;
+	bool rotY;
+	bool rotZ;
+}
+
 osg::Node* readCube()
 {
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
@@ -105,12 +113,66 @@ public:
 	{
 		once_group_->setNodeMask(0);
 
-		//rot_ += delta;
-		scene_->setAttitude(osg::Quat(osg::PI_2f, osg::Z_AXIS));
+		if (g::rotX)
+		{
+			rot_ += delta;
+			scene_->setAttitude(osg::Quat(rot_, osg::X_AXIS));
+		}
+		else if (g::rotY)
+		{
+			rot_ += delta;
+			scene_->setAttitude(osg::Quat(rot_, osg::Y_AXIS));
+		}
+		else if (g::rotZ)
+		{
+			rot_ += delta;
+			scene_->setAttitude(osg::Quat(rot_, osg::Z_AXIS));
+		}
+		else
+		{
+			scene_->setAttitude(osg::Quat(0, osg::Z_AXIS));
+		}
 	}
 
 	mutable float rot_ = 0;
 	float delta = .05;
+};
+
+class EventCallback : public osgGA::GUIEventHandler
+{
+public:
+	virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* nv)
+	{
+		if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
+		{
+			if (ea.getKey() == osgGA::GUIEventAdapter::KEY_X)
+			{
+				g::rotX = g::rotY = g::rotZ = false;
+				g::rotX = true;
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Y)
+			{
+				g::rotX = g::rotY = g::rotZ = false;
+				g::rotY = true;
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Z)
+			{
+				g::rotX = g::rotY = g::rotZ = false;
+				g::rotZ = true;
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Space)
+			{
+				g::rotX = g::rotY = g::rotZ = false;
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_O)
+			{
+				static bool flag = true;
+				flag = !flag;
+				g::skybox->setNodeMask(flag ? ~0 : 0);
+			}
+		}
+		return false;
+	}
 };
 
 struct ComputeBoundingSphereCallback : public osg::Node::ComputeBoundingSphereCallback
@@ -263,7 +325,7 @@ osg::Node* renderSkyBox(osg::Group* root, osg::TextureCubeMap* env_cube_texture)
 	n->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     n->getOrCreateStateSet()->setAttribute(new osg::Depth(osg::Depth::NEVER));
 	pat->setComputeBoundingSphereCallback(new ComputeBoundingSphereCallback);
-
+	g::skybox = pat;
 	return pat;
 }
 
@@ -318,6 +380,7 @@ int main()
 	callback->scene_ = scene;
 
 	view.getCamera()->addPostDrawCallback(callback);
+	view.getCamera()->setEventCallback(new EventCallback);
 #endif
 
 	view.setSceneData(root);
