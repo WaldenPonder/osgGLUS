@@ -1,5 +1,6 @@
 varying vec3 Normal;
 varying vec3 WorldPos;
+varying vec3 camPos;
 
 // IBL
 uniform samplerCube irradiance_map;
@@ -66,10 +67,7 @@ void main()
 	lightColors[0] = vec3(1);
 	lightColors[1] = vec3(1);
 
-	vec3 camPos = vec3(0.);
-
-
-    vec3 N = Normal;
+    vec3 N = normalize(Normal);
     vec3 V = normalize(camPos - WorldPos);
     vec3 R = reflect(-V, N); 
 
