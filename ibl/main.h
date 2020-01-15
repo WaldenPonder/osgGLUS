@@ -1,4 +1,3 @@
-#pragma once
 
 osg::Node* readCube()
 {
@@ -72,17 +71,17 @@ osg::Node* readCube()
 
 class CameraPostdrawCallback : public osg::Camera::DrawCallback
 {
-public:
+ public:
 	virtual void operator()(osg::RenderInfo& renderInfo) const
 	{
 		if (g::needRedraw)
 		{
 			g::needRedraw = false;
-			c = 0;
+			c			  = 0;
 		}
 
 		c++;
-		if(c == 2)
+		if (c == 2)
 			g::draw_once_group->setNodeMask(0);
 	}
 
@@ -93,8 +92,8 @@ osg::ref_ptr<osg::Group> setUp();
 
 class EventCallback : public osgGA::GUIEventHandler
 {
-public:
-	mutable float rot_ = 0;
+ public:
+	mutable float rot_	= 0;
 	float		  delta = .05;
 
 	virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* nv)
@@ -122,17 +121,17 @@ public:
 			if (ea.getKey() == osgGA::GUIEventAdapter::KEY_X)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotX = true;
+				g::rotX						= true;
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Y)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotY = true;
+				g::rotY						= true;
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Z)
 			{
 				g::rotX = g::rotY = g::rotZ = false;
-				g::rotZ = true;
+				g::rotZ						= true;
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Q)
 			{
@@ -145,10 +144,10 @@ public:
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_O)
 			{
 				static bool flag = true;
-				flag = !flag;
+				flag			 = !flag;
 				g::skybox->setNodeMask(flag ? ~0 : 0);
 			}
-			else if(ea.getKey() == osgGA::GUIEventAdapter::KEY_Up)
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Up)
 			{
 				g::imageIndex++;
 				g::needRedraw = true;
@@ -159,7 +158,7 @@ public:
 			{
 				g::imageIndex--;
 				g::needRedraw = true;
-				g::sceneData->removeChildren(0, 1);				
+				g::sceneData->removeChildren(0, 1);
 				g::sceneData->addChild(setUp());
 			}
 		}
@@ -207,7 +206,7 @@ void loadImages()
 
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr"));
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg"));
-	   
+
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\Walk_Of_Fame\\Mans_Outside_2k.hdr"));
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\EtniesPark_Center\\Etnies_Park_Center_8k.jpg"));
 
