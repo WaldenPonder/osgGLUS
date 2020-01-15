@@ -13,13 +13,9 @@
 //https://metashapes.com/blog/realtime-image-based-lighting-using-spherical-harmonics/
 
 /*
-  纹理为什么会乱
+HDR纹理，太阳绘制的颜色有误。
 
-
-  位置为什么会乱
 */
-
-//#define RENDER_SIMPLE_CUBE
 
 /*
 牛的方向： X向右，Y向外，Z向上
@@ -27,14 +23,18 @@
 
 namespace g
 {
-	osg::Group*						root;
-	osg::Node*						skybox;
-	osg::Group*						draw_once_group;
-	osg::PositionAttitudeTransform* scene;
-	bool							rotX	 = false;
-	bool							rotY	 = false;
-	bool							rotZ	 = false;
-	bool							clearRot = false;
+	osg::Group*						 root;
+	osg::Node*						 skybox;
+	osg::Group*						 draw_once_group;
+	osg::PositionAttitudeTransform*	 modelParent;
+	bool							 rotX	  = false;
+	bool							 rotY	  = false;
+	bool							 rotZ	  = false;
+	bool							 clearRot = false;
+	bool  needRedraw = false;
+	int								 imageIndex;
+	osg::ref_ptr<osg::Group>		 sceneData;
+	vector<osg::ref_ptr<osg::Image>> images;
 }  // namespace g
 
 #include "main.h"
@@ -70,17 +70,7 @@ osg::TextureCubeMap* equirectangular2Envmap()
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_1.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_1.frag"));
 
-	osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg");
-
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg");
-
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Walk_Of_Fame/Mans_Outside_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/MonValley_Lookout/MonValley_A_LookoutPoint_Env.hdr");
-	//osg::Image* img = osgDB::readImageFile(shader_dir() + "/ibl/hdr/Sierra_Madre_B/Sierra_Madre_B_Env.hdr");
-
-	osg::Texture2D* texture = new osg::Texture2D(img);
+	osg::Texture2D* texture = new osg::Texture2D(g::images[g::imageIndex % g::images.size()]);
 	texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
 	texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
 	texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
@@ -175,21 +165,20 @@ osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map)
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(1, irradiance_map);
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 1));
-	g::scene = pat;
+	g::modelParent = pat;
 	return pat;
 }
 
-int main()
+osg::ref_ptr<osg::Group> setUp()
 {
-	osgViewer::Viewer view;
-	osg::Group*		  root = new osg::Group;
-	g::root				   = root;
+	osg::ref_ptr<osg::Group> root = new osg::Group;
+	g::root						  = root;
 
 	osg::Group* draw_once_group = new osg::Group;
 	g::draw_once_group			= draw_once_group;
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap();
-	osg::TextureCubeMap* irradiance_map = envMap2IrradianceMap(env_cube_texture);
+	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(env_cube_texture);
 
 	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
 	//osg::TextureCubeMap* irradiance_map = dynamic_cast<osg::TextureCubeMap*>(osgDB::readObjectFile(shader_dir() + "/ibl/irradiance_map.osgb"));
@@ -197,14 +186,31 @@ int main()
 	osg::Node*						skybox = renderSkyBox(env_cube_texture);
 	osg::PositionAttitudeTransform* scene  = renderScene(irradiance_map);
 
-	view.getCamera()->setEventCallback(new EventCallback);
-	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
-
 	root->addChild(g::draw_once_group);
 	root->addChild(g::skybox);
-	root->addChild(g::scene);
+	root->addChild(g::modelParent);
 
-	view.setSceneData(root);
+	return root;
+}
+
+int main()
+{
+	//std::cout << "INPUT IMAGE INDEX:" << std::endl;
+	//std::cin >> g::imageIndex;
+
+	loadImages();
+	g::imageIndex = g::images.size() * 100;
+
+	osgViewer::Viewer		 view;
+	osg::ref_ptr<osg::Group> sceneData = new osg::Group;
+	g::sceneData = sceneData;
+
+	view.getCamera()->setEventCallback(new EventCallback);
+	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
+	view.setSceneData(sceneData);
+
+	sceneData->addChild(setUp());
+
 	add_event_handler(view);
 	view.getCamera()->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);

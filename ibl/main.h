@@ -75,9 +75,21 @@ class CameraPostdrawCallback : public osg::Camera::DrawCallback
 public:
 	virtual void operator()(osg::RenderInfo& renderInfo) const
 	{
-		g::draw_once_group->setNodeMask(0);
+		if (g::needRedraw)
+		{
+			g::needRedraw = false;
+			c = 0;
+		}
+
+		c++;
+		if(c == 2)
+			g::draw_once_group->setNodeMask(0);
 	}
+
+	mutable long long c = 0;
 };
+
+osg::ref_ptr<osg::Group> setUp();
 
 class EventCallback : public osgGA::GUIEventHandler
 {
@@ -87,7 +99,7 @@ public:
 
 	virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* nv)
 	{
-		osg::PositionAttitudeTransform* scene = g::scene;
+		osg::PositionAttitudeTransform* scene = g::modelParent;
 
 		if (g::rotX)
 		{
@@ -124,7 +136,7 @@ public:
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Q)
 			{
-				g::scene->setAttitude(osg::Quat(0, osg::Z_AXIS));
+				g::modelParent->setAttitude(osg::Quat(0, osg::Z_AXIS));
 			}
 			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Space)
 			{
@@ -135,6 +147,20 @@ public:
 				static bool flag = true;
 				flag = !flag;
 				g::skybox->setNodeMask(flag ? ~0 : 0);
+			}
+			else if(ea.getKey() == osgGA::GUIEventAdapter::KEY_Up)
+			{
+				g::imageIndex++;
+				g::needRedraw = true;
+				g::sceneData->removeChildren(0, 1);
+				g::sceneData->addChild(setUp());
+			}
+			else if (ea.getKey() == osgGA::GUIEventAdapter::KEY_Down)
+			{
+				g::imageIndex--;
+				g::needRedraw = true;
+				g::sceneData->removeChildren(0, 1);				
+				g::sceneData->addChild(setUp());
 			}
 		}
 		return false;
@@ -174,4 +200,18 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 	view_mats.push_back(osg::Matrix::lookAt(osg::Vec3(0.0f, 0.0f, -DISTANCE), osg::Vec3(0.0f, 0.0f, -1.0f), osg::Vec3(0.0f, -1.0f, 0.0f)));
 }
 
+void loadImages()
+{
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr"));
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg"));
 
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr"));
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg"));
+	   
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\Walk_Of_Fame\\Mans_Outside_2k.hdr"));
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\EtniesPark_Center\\Etnies_Park_Center_8k.jpg"));
+
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Walk_Of_Fame/Mans_Outside_Env.hdr"));
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/MonValley_Lookout/MonValley_A_LookoutPoint_Env.hdr"));
+	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Sierra_Madre_B/Sierra_Madre_B_Env.hdr"));
+}
