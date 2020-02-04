@@ -1,5 +1,5 @@
 
-osg::Node* readCube()
+osg::Node* createCube()
 {
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
 	//osg::Node*						n	= osgDB::readNodeFile(shader_dir() + "/cube.obj");
@@ -67,6 +67,31 @@ osg::Node* readCube()
 	arr->push_back(osg::Vec3(-1.0f, 1.0f, 1.0f));
 
 	return pat;
+}
+
+osg::Node* createQuad()
+{
+	osg::Geode* geode = new osg::Geode;
+	osg::Geometry* geometry = new osg::Geometry;
+	geode->addDrawable(geometry);
+	geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+	osg::Vec3Array* arr = new osg::Vec3Array;
+	geometry->setVertexArray(arr);
+	geometry->setUseVertexBufferObjects(true);
+
+	arr->push_back(osg::Vec3(-1.0f, 1.0f, 0.0f));
+	arr->push_back(osg::Vec3(-1.0f, -1.0f, 0.0f));
+	arr->push_back(osg::Vec3(1.0f, 1.0f, 0.0f));
+	arr->push_back(osg::Vec3(1.0f, -1.0f, 0.0f));
+
+	osg::Vec2Array* texture = new osg::Vec2Array;
+	texture->push_back(osg::Vec2(0, 1));
+	texture->push_back(osg::Vec2(0, 0));
+	texture->push_back(osg::Vec2(1, 1));
+	texture->push_back(osg::Vec2(1, 0));
+	geometry->setTexCoordArray(0, texture);
+
+	return geode;
 }
 
 class CameraPostdrawCallback : public osg::Camera::DrawCallback
@@ -208,7 +233,7 @@ void loadImages()
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg"));
 
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\Walk_Of_Fame\\Mans_Outside_2k.hdr"));
-	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\EtniesPark_Center\\Etnies_Park_Center_8k.jpg"));
+	//g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\EtniesPark_Center\\Etnies_Park_Center_8k.jpg"));
 
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Walk_Of_Fame/Mans_Outside_Env.hdr"));
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/MonValley_Lookout/MonValley_A_LookoutPoint_Env.hdr"));

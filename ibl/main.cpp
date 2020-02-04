@@ -27,11 +27,11 @@ namespace g
 	osg::Node*						 skybox;
 	osg::Group*						 draw_once_group;
 	osg::PositionAttitudeTransform*	 modelParent;
-	bool							 rotX	  = false;
-	bool							 rotY	  = false;
-	bool							 rotZ	  = false;
-	bool							 clearRot = false;
-	bool  needRedraw = false;
+	bool							 rotX		= false;
+	bool							 rotY		= false;
+	bool							 rotZ		= false;
+	bool							 clearRot	= false;
+	bool							 needRedraw = false;
 	int								 imageIndex;
 	osg::ref_ptr<osg::Group>		 sceneData;
 	vector<osg::ref_ptr<osg::Image>> images;
@@ -42,7 +42,7 @@ namespace g
 osg::TextureCubeMap* equirectangular2Envmap()
 {
 	const float TEXTURE_SIZE = 1024.f;
-	osg::Node*	n			 = readCube();
+	osg::Node*	n			 = createCube();
 
 	//equirectangular To Cubemap
 	osg::TextureCubeMap* env_cube_texture = new osg::TextureCubeMap;
@@ -88,7 +88,7 @@ osg::TextureCubeMap* equirectangular2Envmap()
 
 osg::TextureCubeMap* envMap2IrradianceMap(osg::TextureCubeMap* env_cube_texture)
 {
-	osg::Node* n = readCube();
+	osg::Node* n = createCube();
 
 	const float TEXTURE_SIZE = 64.f;
 	//equirectangular To Cubemap
@@ -121,9 +121,90 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::TextureCubeMap* env_cube_texture)
 	return irradiance_map;
 }
 
+osg::TextureCubeMap* createPrefilterMap(osg::TextureCubeMap* env_cube_texture)
+{
+	osg::Node* n = createCube();
+
+	const float TEXTURE_SIZE = 128.f;
+	//prefilterMap
+	osg::TextureCubeMap* prefilter_map = new osg::TextureCubeMap;
+	vector<osg::Matrix>	 view_mats;
+	cubeTextureAndViewMats(prefilter_map, view_mats, TEXTURE_SIZE);
+	prefilter_map->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+
+	unsigned int maxMipLevels = 5;
+
+	for (size_t mip = 0; mip < maxMipLevels; mip++)
+	{
+		for (int i = 0; i < 6; i++)
+		{
+			osg::Camera* fbo = new osg::Camera;
+			g::draw_once_group->addChild(fbo);
+			fbo->setRenderOrder(osg::Camera::PRE_RENDER);
+			fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+			fbo->setViewMatrix(view_mats[i]);
+			fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1, .1f, 10.f));
+			fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+			fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+			fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			fbo->attach(osg::Camera::COLOR_BUFFER, prefilter_map, mip, i, true);
+			fbo->addChild(n);
+		}
+	}
+	
+	osg::Program* p = new osg::Program;
+	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_3_prefilter.vert"));
+	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_3_prefilter.frag"));
+	n->getOrCreateStateSet()->setAttributeAndModes(p);
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, env_cube_texture);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("env_cube_texture", 0));
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("roughness", 0.3));
+
+	return prefilter_map;
+}
+
+osg::Texture2D* createBRDFTexture(osg::TextureCubeMap* env_cube_texture)
+{
+	const float TEXTURE_SIZE = 512.f;
+
+	osg::Texture2D* brdfLUTTexture = new osg::Texture2D;
+	brdfLUTTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+	brdfLUTTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+	brdfLUTTexture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+	brdfLUTTexture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+	brdfLUTTexture->setTextureSize(TEXTURE_SIZE, TEXTURE_SIZE);
+	brdfLUTTexture->setInternalFormat(GL_RG16F);
+	brdfLUTTexture->setSourceFormat(GL_RG);
+	brdfLUTTexture->setSourceType(GL_FLOAT);
+
+	osg::Camera* fbo = new osg::Camera;
+	g::draw_once_group->addChild(fbo);
+	fbo->setRenderOrder(osg::Camera::PRE_RENDER);
+	fbo->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	//fbo->setViewMatrix(osg::Matrix::identity());
+	//fbo->setProjectionMatrix(osg::Matrix::perspective(osg::PI_2f, 1, .1f, 10.f));
+	fbo->setViewport(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+	fbo->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+	fbo->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	fbo->attach(osg::Camera::COLOR_BUFFER, brdfLUTTexture);
+
+	osg::Node* n = createQuad();
+	fbo->addChild(n);
+
+	osg::Program* p = new osg::Program;
+	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_4_brdf.vert"));
+	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_4_brdf.frag"));
+	n->getOrCreateStateSet()->setAttributeAndModes(p);
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, env_cube_texture);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("env_cube_texture", 0));
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("roughness", 0.3));
+
+	return brdfLUTTexture;
+}
+
 osg::Node* renderSkyBox(osg::TextureCubeMap* env_cube_texture)
 {
-	osg::Node*						n	= readCube();
+	osg::Node*						n	= createCube();
 	osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
 	const float						s	= 400.f;
 	pat->setScale(osg::Vec3(s, s, s));
@@ -179,12 +260,14 @@ osg::ref_ptr<osg::Group> setUp()
 
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap();
 	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(env_cube_texture);
+	osg::TextureCubeMap* prefilter_map = createPrefilterMap(env_cube_texture);
+	osg::Texture2D* brdf_lut = createBRDFTexture(env_cube_texture);
 
 	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
 	//osg::TextureCubeMap* irradiance_map = dynamic_cast<osg::TextureCubeMap*>(osgDB::readObjectFile(shader_dir() + "/ibl/irradiance_map.osgb"));
 
-	osg::Node*						skybox = renderSkyBox(env_cube_texture);
-	osg::PositionAttitudeTransform* scene  = renderScene(irradiance_map);
+	renderSkyBox(env_cube_texture);
+	renderScene(irradiance_map);
 
 	root->addChild(g::draw_once_group);
 	root->addChild(g::skybox);
@@ -203,11 +286,12 @@ int main()
 
 	osgViewer::Viewer		 view;
 	osg::ref_ptr<osg::Group> sceneData = new osg::Group;
-	g::sceneData = sceneData;
+	g::sceneData					   = sceneData;
 
 	view.getCamera()->setEventCallback(new EventCallback);
 	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
 	view.setSceneData(sceneData);
+
 
 	sceneData->addChild(setUp());
 
