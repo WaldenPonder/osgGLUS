@@ -1,16 +1,27 @@
-varying vec3 Normal;
-varying vec3 WorldPos;
-varying vec3 camPos;
+#version 330 core
+out vec4 FragColor;
+in vec2 TexCoords;
+in vec3 WorldPos;
+in vec3 Normal;
+
+// material parameters
+uniform vec3 albedo;
+uniform float metallic;
+uniform float roughness;
+uniform float ao;
 
 // IBL
-uniform samplerCube irradiance_map;
+uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
 
+// lights
+uniform vec3 lightPositions[4];
+uniform vec3 lightColors[4];
+
+uniform vec3 camPos;
+
 const float PI = 3.14159265359;
-
-#define LIGHT_NUMS 2
-
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -52,24 +63,14 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 // ----------------------------------------------------------------------------
-
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}   
+// ----------------------------------------------------------------------------
 void main()
 {		
-	// material parameters
-	vec3 albedo = vec3(0.8);
-	float metallic = .6;
-	float roughness = .3;
-	float ao = 1.;
-
-	// lights
-	vec3 lightPositions[LIGHT_NUMS];
-	lightPositions[0] = vec3(100., 0, 0);
-	lightPositions[1] = vec3(-100., 0, 0);
-	vec3 lightColors[LIGHT_NUMS];
-	lightColors[0] = vec3(1);
-	lightColors[1] = vec3(1);
-
-    vec3 N = normalize(Normal);
+    vec3 N = Normal;
     vec3 V = normalize(camPos - WorldPos);
     vec3 R = reflect(-V, N); 
 
@@ -80,7 +81,7 @@ void main()
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < LIGHT_NUMS; ++i) 
+    for(int i = 0; i < 4; ++i) 
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - WorldPos);
@@ -95,7 +96,7 @@ void main()
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);        
         
         vec3 nominator    = NDF * G * F;
-        float denominator = LIGHT_NUMS * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
+        float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
         vec3 specular = nominator / denominator;
         
          // kS is equal to Fresnel
@@ -117,32 +118,29 @@ void main()
     }   
     
     // ambient lighting (we now use IBL as the ambient term)
-    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    
+    vec3 kS = F;
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
-    vec3 irradiance = texture(irradiance_map, N).rgb;
-    vec3 diffuse      = irradiance * albedo;
-    vec3 ambient = (kD * diffuse) * ao;
-    // vec3 ambient = vec3(0.002);
     
-    vec3 color = ambient + Lo;
-	
-	
-	// sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    
+    // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-	
-	////////////////////////////////////////////////////////////////////wq
-    color = diffuse + specular;
-	
+
+    vec3 ambient = (kD * diffuse + specular) * ao;
+    
+    vec3 color = ambient + Lo;
+
     // HDR tonemapping
     color = color / (color + vec3(1.0));
     // gamma correct
     color = pow(color, vec3(1.0/2.2)); 
 
-    color = clamp(color, 0., 1.);
-	
-    gl_FragColor = vec4(color , 1.0);
+    FragColor = vec4(color , 1.0);
 }

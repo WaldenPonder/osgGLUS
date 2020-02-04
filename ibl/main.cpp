@@ -278,9 +278,6 @@ osg::ref_ptr<osg::Group> setUp()
 
 int main()
 {
-	//std::cout << "INPUT IMAGE INDEX:" << std::endl;
-	//std::cin >> g::imageIndex;
-
 	loadImages();
 	g::imageIndex = g::images.size() * 100;
 
@@ -291,8 +288,7 @@ int main()
 	view.getCamera()->setEventCallback(new EventCallback);
 	view.getCamera()->setPostDrawCallback(new CameraPostdrawCallback);
 	view.setSceneData(sceneData);
-
-
+	
 	sceneData->addChild(setUp());
 
 	add_event_handler(view);
