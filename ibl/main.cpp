@@ -121,7 +121,7 @@ osg::TextureCubeMap* envMap2IrradianceMap(osg::TextureCubeMap* env_cube_texture)
 	return irradiance_map;
 }
 
-
+//------------------------------------------------------------- PrefilterMap
 osg::TextureCubeMap* createPrefilterMap(osg::TextureCubeMap* env_cube_texture)
 {
 	osg::Node* n = createCube();
@@ -169,7 +169,7 @@ osg::TextureCubeMap* createPrefilterMap(osg::TextureCubeMap* env_cube_texture)
 	return prefilter_map;
 }
 
-#if 0
+//-------------------------------------------------------------brdf map
 osg::Texture2D* createBRDFTexture(osg::TextureCubeMap* env_cube_texture)
 {
 	const float TEXTURE_SIZE = 512.f;
@@ -205,11 +205,13 @@ osg::Texture2D* createBRDFTexture(osg::TextureCubeMap* env_cube_texture)
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(0, env_cube_texture);
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("env_cube_texture", 0));
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("roughness", 0.3));
+	p->addBindAttribLocation("aPos", 0);
+	p->addBindAttribLocation("aTexCoords", 1);
 
 	return brdfLUTTexture;
 }
-#endif
 
+//-------------------------------------------------------------skybox
 osg::Node* renderSkyBox(osg::TextureCubeMap* env_cube_texture)
 {
 	osg::Node*						n	= createCube();
@@ -232,7 +234,8 @@ osg::Node* renderSkyBox(osg::TextureCubeMap* env_cube_texture)
 	return pat;
 }
 
-osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map)
+//-------------------------------------------------------------renderScene
+osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map, osg::TextureCubeMap* prefilter_map, osg::Texture2D* brdf_map)
 {
 	//osg::Node*						n = osgDB::readNodeFile("F:\\360Downloads\\model\\dddd.osgb");
 	//osg::Node*						n	= osgDB::readNodeFile("F:\\360Downloads\\model\\abc.osgb");
@@ -252,12 +255,21 @@ osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map)
 	p->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/ibl/ibl_final.vert"));
 	p->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/ibl/ibl_final.frag"));
 	n->getOrCreateStateSet()->setAttributeAndModes(p);
+
 	n->getOrCreateStateSet()->setTextureAttributeAndModes(1, irradiance_map);
 	n->getOrCreateStateSet()->addUniform(new osg::Uniform("irradiance_map", 1));
+
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(2, prefilter_map);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("prefilter_map", 2));
+
+	n->getOrCreateStateSet()->setTextureAttributeAndModes(3, brdf_map);
+	n->getOrCreateStateSet()->addUniform(new osg::Uniform("brdf_map", 3));
+	   
 	g::modelParent = pat;
 	return pat;
 }
 
+//-------------------------------------------------------------setUp
 osg::ref_ptr<osg::Group> setUp()
 {
 	osg::ref_ptr<osg::Group> root = new osg::Group;
@@ -269,13 +281,13 @@ osg::ref_ptr<osg::Group> setUp()
 	osg::TextureCubeMap* env_cube_texture = equirectangular2Envmap();
 	osg::TextureCubeMap* irradiance_map	  = envMap2IrradianceMap(env_cube_texture);
 	osg::TextureCubeMap* prefilter_map = createPrefilterMap(env_cube_texture);
-	//osg::Texture2D* brdf_lut = createBRDFTexture(env_cube_texture);
+	osg::Texture2D* brdf_map = createBRDFTexture(env_cube_texture);
 
 	//osgDB::writeObjectFile(*irradiance_map, shader_dir() + "/ibl/irradiance_map.osgb");
 	//osg::TextureCubeMap* irradiance_map = dynamic_cast<osg::TextureCubeMap*>(osgDB::readObjectFile(shader_dir() + "/ibl/irradiance_map.osgb"));
 
 	renderSkyBox(env_cube_texture);
-	renderScene(irradiance_map);
+	renderScene(irradiance_map, prefilter_map, brdf_map);
 
 	root->addChild(g::draw_once_group);
 	root->addChild(g::skybox);

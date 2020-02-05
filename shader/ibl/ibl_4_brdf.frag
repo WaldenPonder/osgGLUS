@@ -1,7 +1,8 @@
-#extension GL_EXT_gpu_shader4: enable
+#version 330 core
+//#extension GL_EXT_gpu_shader4: enable
 
-varying vec3 WorldPos;
-varying vec2 TexCoords;
+
+in vec2 TexCoords;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------

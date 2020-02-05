@@ -83,13 +83,15 @@ osg::Node* createQuad()
 	arr->push_back(osg::Vec3(-1.0f, -1.0f, 0.0f));
 	arr->push_back(osg::Vec3(1.0f, 1.0f, 0.0f));
 	arr->push_back(osg::Vec3(1.0f, -1.0f, 0.0f));
-
+	
 	osg::Vec2Array* texture = new osg::Vec2Array;
 	texture->push_back(osg::Vec2(0, 1));
 	texture->push_back(osg::Vec2(0, 0));
 	texture->push_back(osg::Vec2(1, 1));
 	texture->push_back(osg::Vec2(1, 0));
-	geometry->setTexCoordArray(0, texture);
+	   	 
+	geometry->setVertexAttribArray(0, arr, osg::Array::BIND_PER_VERTEX);
+	geometry->setVertexAttribArray(1, texture, osg::Array::BIND_PER_VERTEX);
 
 	return geode;
 }
