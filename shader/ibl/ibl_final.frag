@@ -127,6 +127,9 @@ void main()
     
     vec3 color = ambient + Lo;
 	
+	//todo:
+    vec3 F = vec3(1.);//fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
 	
 	// sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
     const float MAX_REFLECTION_LOD = 4.0;
@@ -135,7 +138,7 @@ void main()
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 	
 	////////////////////////////////////////////////////////////////////wq
-    color = diffuse + specular;
+    color = diffuse;// + specular;
 	
     // HDR tonemapping
     color = color / (color + vec3(1.0));

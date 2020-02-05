@@ -227,10 +227,10 @@ void cubeTextureAndViewMats(osg::TextureCubeMap* cube_texture, vector<osg::Matri
 void loadImages()
 {
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_Env.hdr"));
-	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg"));
+	//g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Playa_Sunrise/Playa_Sunrise_8k.jpg"));
 
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_Env.hdr"));
-	g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg"));
+	//g::images.push_back(osgDB::readImageFile(shader_dir() + "/ibl/hdr/Ridgecrest_Road/Ridgecrest_Road_4k_Bg.jpg"));
 
 	g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\Walk_Of_Fame\\Mans_Outside_2k.hdr"));
 	//g::images.push_back(osgDB::readImageFile(shader_dir() + "\\ibl\\hdr\\EtniesPark_Center\\Etnies_Park_Center_8k.jpg"));

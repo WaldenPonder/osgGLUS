@@ -1,3 +1,5 @@
+#extension GL_EXT_gpu_shader4: enable
+
 varying vec3 WorldPos;
 varying vec2 TexCoords;
 
@@ -108,5 +110,5 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
 void main() 
 {
     vec2 integratedBRDF = IntegrateBRDF(TexCoords.x, TexCoords.y);
-    gl_FragColor = integratedBRDF;
+    gl_FragColor = vec4(integratedBRDF, 0, 0);
 }
