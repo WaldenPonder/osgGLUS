@@ -1,4 +1,4 @@
-// custom_drawable.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+﻿// custom_drawable.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 
 #include "pch.h"
@@ -6,7 +6,6 @@
 #include <osg/io_utils>
 #include <osg/KdTree>
 #include <random>
-#include "osgDB/ReadFile"
 
 #define  WINDOWSIZE 8
 
@@ -438,43 +437,6 @@ class PickHandler : public osgGA::GUIEventHandler
 	unsigned int						_primitiveMask;
 };
 
-#if 0
-int main()
-{
-	osgViewer::Viewer view;
-	osg::Group* root = new osg::Group;
-	osg::Geode* pGeode = (osg::Geode*)osgDB::readNodeFile("F://aa.osg");
-	view.setSceneData(root);
-	root->addChild(pGeode);
-	
-	osg::StateSet* ss = pGeode->getOrCreateStateSet();
-	osg::Geometry* pGeometry = dynamic_cast<osg::Geometry*>(pGeode->getDrawable(0));
-
-	osg::Program* program = new osg::Program;
-	//ss->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
-
-	osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, "E:/Work/Plat3d/main/x64/Release/bin/common/Resources/shader/water/my-hpcv-water-tile.vert");
-	osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, "E:/Work/Plat3d/main/x64/Release/bin/common/Resources/shader/water/my-hpcv-water-tile.frag");
-
-	program->addShader(vert);
-	program->addShader(frag);
-
-	osg::Array* arr = pGeometry->getVertexArray();
-	pGeometry->setVertexAttribArray(0, arr, osg::Array::BIND_PER_VERTEX);
-	pGeometry->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
-	program->addBindAttribLocation("a_Pos", 0);
-	add_event_handler(view);
-	view.realize();
-	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
-
-	osg::ref_ptr<osg::Uniform> u_MPV = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP");
-	u_MPV->setUpdateCallback(new MVPCallback(view.getCamera()));
-
-	return view.run();
-}
-
-#else
-
 int main()
 {
 	osgViewer::Viewer view;
@@ -488,5 +450,3 @@ int main()
 	view.realize();
 	return view.run();
 }
-
-#endif

@@ -239,7 +239,7 @@ osg::PositionAttitudeTransform* renderScene(osg::TextureCubeMap* irradiance_map,
 {
 	//osg::Node*						n = osgDB::readNodeFile("F:\\360Downloads\\model\\dddd.osgb");
 	//osg::Node*						n	= osgDB::readNodeFile("F:\\360Downloads\\model\\abc.osgb");
-	osg::Node* n = osgDB::readNodeFile("cow.osg");
+	osg::Node* n = osgDB::readNodeFile("F:\\aaa.osgb");
 
 	osg::ComputeBoundsVisitor cbv;
 	n->accept(cbv);
@@ -292,6 +292,28 @@ osg::ref_ptr<osg::Group> setUp()
 	root->addChild(g::draw_once_group);
 	root->addChild(g::skybox);
 	root->addChild(g::modelParent);
+
+	//绘制 brdf  texture
+	if(0)
+	{
+		osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
+		osg::Geode* geode = new osg::Geode;
+		osg::Geometry* quat = osg::createTexturedQuadGeometry(osg::Vec3(), osg::Vec3(100, 0, 0), osg::Vec3(0, 100, 0));
+		pat->addChild(geode);
+		pat->setAttitude(osg::Quat(osg::PI_2f, osg::X_AXIS));
+		geode->addChild(quat);
+
+		pat->setPosition(osg::Vec3(100, 10, 10));
+
+		auto* ss = geode->getOrCreateStateSet();
+		ss->setTextureAttributeAndModes(0, brdf_map);
+		osg::Program* p = new osg::Program;
+		p->addShader(osgDB::readShaderFile(shader_dir() + "/ibl/simple.vert"));
+		p->addShader(osgDB::readShaderFile(shader_dir() + "/ibl/simple.frag"));
+		ss->setAttributeAndModes(p);
+		ss->addUniform(new osg::Uniform("baseTexture", 0));
+		g::modelParent->addChild(pat);
+	}
 
 	return root;
 }
