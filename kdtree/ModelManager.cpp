@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "pch.h"
 #include "ModelManager.h"
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -8,13 +8,15 @@
 #include <osgUtil/IntersectionVisitor>
 #include <random>
 #include "osgUtil/LineSegmentIntersector"
-#include "Db3DModeling/DB/DbBaseDefine.h"
-#include "Db3DModeling/DB/DbGlobal.h"
 #include <osgDB/WriteFile>
 #include <osg/io_utils>
+#include <cassert>
 
+using namespace std;
 bool g_cullActive = true;
-bool g_showBoundingbox = true;
+KdTree g_kdtree;
+
+osg::Vec3 g_normals[] = { osg::X_AXIS, osg::Y_AXIS, osg::Z_AXIS };
 
 class CameraPredrawCallback : public osg::Camera::DrawCallback
 {
@@ -30,14 +32,12 @@ class CameraPredrawCallback : public osg::Camera::DrawCallback
 
 	virtual void operator()(osg::RenderInfo& renderInfo) const
 	{
-		boundingbox_->setNodeMask(g_showBoundingbox ? NM_ALL : NM_NO_SHOW);
-
 		if (models_.size() <= 0) return;
 
 		if (g_cullActive == false)
 		{
 			for (osg::Node* n : models_)
-				n->setNodeMask(NM_ALL);
+				n->setNodeMask(~0);
 			return;
 		}
 
@@ -46,23 +46,31 @@ class CameraPredrawCallback : public osg::Camera::DrawCallback
 
 		const int kRayCountPerFrame				= 200;
 		const int kFrameNoIntersectionDisappear = 400;
-
-		osg::ref_ptr<osgUtil::IntersectorGroup> pickGroup = new osgUtil::IntersectorGroup;
+				
 		{
 			std::default_random_engine			   generator(time(NULL));
 			std::uniform_real_distribution<double> distribution(-1., 1.);
 			osg::Matrix mat = osg::Matrix::inverse(camera_->getViewMatrix() * camera_->getProjectionMatrix());
+
+			vector<osg::Vec3> starts, ends;
 
 			clock_t t = clock();
 			for (int i = 0; i < kRayCountPerFrame; i++)
 			{
 				double x = distribution(generator);
 				double y = distribution(generator);
-				osg::Vec3 start = osg::Vec3(x, y, -1) * mat;
-				osg::Vec3 end = osg::Vec3(x, y, 1) * mat;
-				pickGroup->addIntersector(new osgUtil::LineSegmentIntersector(start, end));
+				starts.push_back(osg::Vec3(x, y, -1) * mat);
+				ends.push_back(osg::Vec3(x, y, 1) * mat);
 			}
 
+#if 0
+			osg::ref_ptr<osgUtil::IntersectorGroup> pickGroup = new osgUtil::IntersectorGroup;
+
+			for (int i = 0; i < kRayCountPerFrame; i++)
+			{
+				pickGroup->addIntersector(new osgUtil::LineSegmentIntersector(starts[i], ends[i]));
+			}
+			
 			osgUtil::IntersectionVisitor iv(pickGroup);			
 			boundingbox_->accept(iv);
 			OSG_WARN << "TIME: " << (clock() - t) << "\n";
@@ -89,6 +97,27 @@ class CameraPredrawCallback : public osg::Camera::DrawCallback
 					}
 				}
 			}
+#else
+			for (int i = 0; i < kRayCountPerFrame; i++)
+			{
+				Ray ray;
+				ray.start = starts[i];
+				ray.dir = ends[i] - starts[i];
+								
+				for (int i = 0; i < 3; i++)
+				{
+					ray.precomputedNumerator[i] = g_normals[i] * ray.start;
+					ray.precomputedDenominator[i] = g_normals[i] * ray.dir;
+				}
+
+				std::vector<osg::Node*> nodes = g_kdtree.intersection(ray);
+				for (osg::Node* n : nodes)
+				{
+					modelsFrame_[n] = frameNumber_;
+				}
+			}
+			OSG_WARN << "TIME: " << (clock() - t) << "\n";
+#endif
 		}
 
 		int count = 0;
@@ -99,7 +128,7 @@ class CameraPredrawCallback : public osg::Camera::DrawCallback
 			unsigned long delta = frameNumber_ - frame;
 
 			if (delta >= kFrameNoIntersectionDisappear) count++;
-			n->setNodeMask(delta > kFrameNoIntersectionDisappear ? 0 : NM_ALL);
+			n->setNodeMask(delta > kFrameNoIntersectionDisappear ? 0 : ~0);
 		}
 
 		OSG_WARN << "CULL DRAWABLE: " << count << std::endl;
@@ -115,8 +144,8 @@ class CameraPredrawCallback : public osg::Camera::DrawCallback
 
 ModelManager::ModelManager(osg::Camera* camere, osg::Group* parent)
 {
+	parent_ = parent;
 	modelRoot_ = new osg::Group;
-	modelRoot_->setNodeMask(NM_PLACEHOLDER);
 	parent->addChild(modelRoot_);
 
 	boundingbox_ = new osg::PositionAttitudeTransform;
@@ -151,21 +180,6 @@ void ModelManager::buildBoundingbox()
 	};
 #pragma endregion 
 
-	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-
-	osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
-	geometry->setName("BOUNDINGBOX_FOR_CULL");
-	geode->addDrawable(geometry);
-	boundingbox_->addChild(geode);
-
-	osg::ref_ptr<osg::Vec3Array> vert = new osg::Vec3Array;
-	geometry->setVertexArray(vert);
-	osg::ref_ptr<osg::Vec4Array> color = new osg::Vec4Array;
-	geometry->setColorArray(color, osg::Array::BIND_PER_VERTEX);
-
-	std::default_random_engine			  eng(time(NULL));
-	std::uniform_real_distribution<float> urd(0, 1);
-
 	CollectGeometryVisitor cgv;
 	modelRoot_->accept(cgv);
 
@@ -197,62 +211,16 @@ void ModelManager::buildBoundingbox()
 
 		if (!bb.valid() || !bbWorld.valid()) continue;
 
-		float xMin = bb.xMin(), xMax = bb.xMax();
-		float yMin = bb.yMin(), yMax = bb.yMax();
-		float zMin = bb.zMin(), zMax = bb.zMax();
-
-		//OSG_WARN << "DELTA: " << (xMax - xMin) << "\t" << (yMax - yMin) << "\t" << (zMax - zMin) << "\n";
-
-		float r = urd(eng), g = urd(eng), b = urd(eng);
-		for (int j = 0; j < 24; j++)
-		{
-			color->push_back(osg::Vec4(r, g, b, 1));
-		}
-
-		//front
-		vert->push_back(osg::Vec3(xMin, yMin, zMin));
-		vert->push_back(osg::Vec3(xMax, yMin, zMin));
-		vert->push_back(osg::Vec3(xMax, yMin, zMax));
-		vert->push_back(osg::Vec3(xMin, yMin, zMax));
-
-		//back
-		vert->push_back(osg::Vec3(xMin, yMax, zMin));
-		vert->push_back(osg::Vec3(xMax, yMax, zMin));
-		vert->push_back(osg::Vec3(xMax, yMax, zMax));
-		vert->push_back(osg::Vec3(xMin, yMax, zMax));
-
-		//left
-		vert->push_back(osg::Vec3(xMin, yMin, zMin));
-		vert->push_back(osg::Vec3(xMin, yMax, zMin));
-		vert->push_back(osg::Vec3(xMin, yMax, zMax));
-		vert->push_back(osg::Vec3(xMin, yMin, zMax));
-
-		//right
-		vert->push_back(osg::Vec3(xMax, yMin, zMin));
-		vert->push_back(osg::Vec3(xMax, yMax, zMin));
-		vert->push_back(osg::Vec3(xMax, yMax, zMax));
-		vert->push_back(osg::Vec3(xMax, yMin, zMax));
-
-		//top
-		vert->push_back(osg::Vec3(xMin, yMin, zMax));
-		vert->push_back(osg::Vec3(xMax, yMin, zMax));
-		vert->push_back(osg::Vec3(xMax, yMax, zMax));
-		vert->push_back(osg::Vec3(xMin, yMax, zMax));
-
-		//bottom
-		vert->push_back(osg::Vec3(xMin, yMin, zMax));
-		vert->push_back(osg::Vec3(xMax, yMin, zMax));
-		vert->push_back(osg::Vec3(xMax, yMax, zMax));
-		vert->push_back(osg::Vec3(xMin, yMax, zMax));
+		g_kdtree.add(bb, c);
+		drawBoundingBox_.add(bb);
 	}
-
-	geometry->addPrimitiveSet(new osg::DrawArrays(GL_QUADS, 0, vert->size()));
-
-	osg::ref_ptr<osg::PolygonMode> model = new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
-	geode->getOrCreateStateSet()->setAttributeAndModes(model);
-
+	
+	osg::Geode* geode = drawBoundingBox_.get();
+	geode->getChild(0)->setName("BOUNDINGBOX_FOR_CULL");
+	boundingbox_->addChild(geode);
+	
 	osg::ref_ptr<osg::KdTreeBuilder> kdtreebuild = new osg::KdTreeBuilder;
 	geode->accept(*kdtreebuild);
 
-	osgDB::writeNodeFile(*boundingbox_, "F:\\box.osg");
+	//osgDB::writeNodeFile(*boundingbox_, "F:\\box.osg");
 }
