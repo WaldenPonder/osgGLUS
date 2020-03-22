@@ -13,17 +13,25 @@ int				   g_size   = 60;
 
 osg::Group* g_group1 = nullptr;
 osg::Group* g_group2 = nullptr;
+osg::Group* g_root = nullptr;
 
 //-------------------------------------------------------------
 osg::Group* scene1()
 {
-	osg::Group* root = new osg::Group;
+	g_group1 = new osg::Group;
 
 	osg::ref_ptr<osg::Program> program = new osg::Program;
 	program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.vert"));
 	program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.frag"));
+	program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.geom"));
 
 	osg::Node* cube = osgDB::readNodeFile(shader_dir() + "/res/cube.obj");
+		
+	osg::Matrix windowMat = g_viewer->getCamera()->getViewport()->computeWindowMatrix();
+	osg::Uniform* u_mat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "windowMat");
+	u_mat->set(windowMat);
+
+	g_group1->getOrCreateStateSet()->setAttributeAndModes(program);
 
 	for (int i = 0; i < g_size; i++)
 	{
@@ -32,7 +40,7 @@ osg::Group* scene1()
 			for (int k = 0; k < g_size; k++)
 			{
 				osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
-				root->addChild(pat);
+				g_group1->addChild(pat);
 				pat->setPosition(osg::Vec3(10 * i, 10 * j, k * 10));
 
 				pat->addChild(cube);
@@ -41,10 +49,10 @@ osg::Group* scene1()
 
 				//osg::ref_ptr<osg::PolygonMode> model = new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
 				//geode->getOrCreateStateSet()->setAttributeAndModes(model);
-
-				ss->setAttributeAndModes(program);
+								
 				ss->addUniform(new osg::Uniform("center", osg::Vec3(10 * i, 10 * j, k * 10)));
 				ss->addUniform(new osg::Uniform("radius", 1.0f));
+				ss->addUniform(u_mat);
 
 				osg::Geode*	geode	= dynamic_cast<osg::Geode*>(cube->asGroup()->getChild(0));
 				osg::Geometry* geometry = dynamic_cast<osg::Geometry*>(geode->getDrawable(0));
@@ -55,12 +63,12 @@ osg::Group* scene1()
 		}
 	}
 
-	return root;
+	return g_group1;
 }
 
 osg::Group* scene2()
 {
-	osg::Group* root = new osg::Group;
+	g_group2 = new osg::Group;
 
 	osg::ref_ptr<osg::Geode>		 geode  = new osg::Geode;
 	osg::ref_ptr<osg::ShapeDrawable> sphere = new osg::ShapeDrawable(new osg::Sphere());
@@ -74,14 +82,14 @@ osg::Group* scene2()
 			for (int k = 0; k < g_size; k++)
 			{
 				osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform;
-				root->addChild(pat);
+				g_group2->addChild(pat);
 				pat->setPosition(osg::Vec3(10 * i, 10 * j, k * 10));
 				pat->addChild(geode);
 			}
 		}
 	}
 
-	return root;
+	return g_group2;
 }
 
 class EventCallback : public osgGA::GUIEventHandler
@@ -104,6 +112,25 @@ class EventCallback : public osgGA::GUIEventHandler
 				g_group2->setNodeMask(~0);
 				cout << "group 2\n";
 			}
+			else if (ea.getKey() == 'a')
+			{
+				g_root->addChild(g_group1 = scene1());
+				g_root->addChild(g_group2 = scene2());
+				g_group2->setNodeMask(0);   
+			}
+			else if(ea.getKey() == 'b')
+			{
+				osg::ref_ptr<osg::Program> program = new osg::Program;
+				program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.vert"));
+				program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.frag"));
+				program->addShader(osgDB::readShaderFile(shader_dir() + "/raycast_sphere.geom"));
+
+				osg::Matrix windowMat = g_viewer->getCamera()->getViewport()->computeWindowMatrix();
+				osg::Uniform* u_mat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "windowMat");
+				u_mat->set(windowMat);
+
+				g_group1->getOrCreateStateSet()->setAttributeAndModes(program);
+			}
 		}
 		return false;
 	}
@@ -113,21 +140,18 @@ int main()
 {
 	osgViewer::Viewer view;
 	g_viewer = &view;
+	view.realize();
 
-	osg::Group* root = new osg::Group;
+	g_root = new osg::Group;
 
 	osg::ref_ptr<osg::CullFace> cullface = new osg::CullFace(osg::CullFace::FRONT);
-	root->getOrCreateStateSet()->setAttributeAndModes(cullface, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-	root->addChild(g_group1 = scene1());
-	root->addChild(g_group2 = scene2());
-	g_group2->setNodeMask(0);
-
-	view.setSceneData(root);
+	g_root->getOrCreateStateSet()->setAttributeAndModes(cullface, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+	   
+	view.setSceneData(g_root);
 	add_event_handler(view);
 	view.addEventHandler(new EventCallback);
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
-	view.realize();
+	
 	view.getCamera()->getGraphicsContext()->getState()->setUseModelViewAndProjectionUniforms(true);
 
 	return view.run();

@@ -5,6 +5,7 @@ uniform float radius;
 
 in vec3 pos_;
 in vec3 center_;
+//in vec3 color_;
 
 void main()
 {
