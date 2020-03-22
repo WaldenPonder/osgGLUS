@@ -45,13 +45,14 @@ void KdTree::buildHelper(KdTreeNode* node)
 	drawBoundingBox_.add(node->bb);
 
 	float deltaX = node->bb.xMax() - node->bb.xMin();
-	float deltaY = node->bb.xMax() - node->bb.xMin();
-	float deltaZ = node->bb.xMax() - node->bb.xMin();
+	float deltaY = node->bb.yMax() - node->bb.yMin();
+	float deltaZ = node->bb.zMax() - node->bb.zMin();
 
 	//选择最大维度的为拆分平面
 	int splitAxis = 0;
-	if (deltaY > deltaX) splitAxis = 1;
-	else if (deltaZ > deltaY) splitAxis = 2;
+	float maxAxis = deltaX;
+	if (deltaY > maxAxis) { splitAxis = 1; maxAxis = deltaY; }
+	if (deltaZ > maxAxis) { splitAxis = 2; maxAxis = deltaZ; }
 
 	int mid = (node->startIndex + node->endIndex) / 2;
 

@@ -13,8 +13,8 @@
 ModelManager* g_modelManager;
 osg::Group*   g_root = new osg::Group;
 
-//string file_path = "F:\\BaiduYunDownload";
-string file_path = "D:\\osgEarth\\models\\quannan";
+string file_path = "F:\\BaiduYunDownload";
+//string file_path = "D:\\osgEarth\\models\\quannan";
 
 void createScene()
 {
@@ -170,10 +170,10 @@ int main()
 	osgViewer::Viewer view;
 
 	g_modelManager = new ModelManager(view.getCamera(), g_root);
-	//createScene();
-	//g_modelManager->buildBoundingbox();
+	createScene();
+	g_modelManager->buildBoundingbox();
 
-	ff();
+	//ff();
 
 	g_kdtree.build();
 	g_root->addChild(g_kdtree.drawBoundingBox_.get());
