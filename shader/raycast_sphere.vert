@@ -2,7 +2,7 @@
 layout (location = 0) in vec3 aPos;
 //layout (location = 1) in vec3 aNormal;
 
-uniform mat4 osg_NormalMatrix;
+//uniform mat4 osg_NormalMatrix;
 uniform mat4 osg_ModelViewProjectionMatrix;
 uniform mat4 osg_ModelViewMatrix;
 uniform vec3 center;
