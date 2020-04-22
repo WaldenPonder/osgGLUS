@@ -45,6 +45,7 @@ using namespace std;
 
 #include <stdio.h>
 #include <io.h>
+#include <osg/MatrixTransform>
 
 inline string shader_dir()
 {
@@ -142,3 +143,30 @@ inline osg::Geometry* createLine(const std::vector<osg::Vec3d>& allPTs, osg::Vec
 	return pGeometry.release();
 }
 
+inline osg::Group* debugTexture(float w, float h, osg::Texture2D* texture, float scale /*= 0.5*/)
+{
+	osg::Geometry* geom = osg::createTexturedQuadGeometry(osg::Vec3(0, 0, 0),
+		osg::Vec3(w, 0, 0) * scale, osg::Vec3(0, h, 0) * scale);
+
+	osg::Geode* geode = new osg::Geode;
+	geode->addChild(geom);
+
+	osg::Program* p = new osg::Program;
+	p->addShader(osgDB::readShaderFile(shader_dir() + "/ibl/simple.vert"));
+	p->addShader(osgDB::readShaderFile(shader_dir() + "/ibl/simple.frag"));
+	geode->getOrCreateStateSet()->setAttributeAndModes(p);
+
+	geode->getOrCreateStateSet()->addUniform(new osg::Uniform("baseTexture", 0));
+	geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture);
+
+	// create the hud.
+	osg::MatrixTransform* modelview_abs = new osg::MatrixTransform;
+	modelview_abs->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	modelview_abs->setMatrix(osg::Matrix::identity());
+	modelview_abs->addChild(geode);
+
+	osg::Projection* projection = new osg::Projection;
+	projection->setMatrix(osg::Matrix::ortho2D(0, w, 0, h));
+	projection->addChild(modelview_abs);
+	return projection;
+}
