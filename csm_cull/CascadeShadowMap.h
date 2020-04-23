@@ -117,6 +117,7 @@ class CascadeShadowMap : public osg::Referenced
 
  private:
 	friend class MainCameraCullingCallback;
+	friend class FirstCameraPredrawCallback;
 	void calculateFrustumCorners(PSSMShadowSplitTexture& pssmShadowSplitTexture, osg::Vec3d* frustumCorners);
 	void calculateLightInitialPosition(PSSMShadowSplitTexture& pssmShadowSplitTexture, osg::Vec3d* frustumCorners);
 	void calculateLightNearFarFormFrustum(PSSMShadowSplitTexture& pssmShadowSplitTexture, osg::Vec3d* frustumCorners);
@@ -126,7 +127,7 @@ class CascadeShadowMap : public osg::Referenced
 
  private:
 	typedef std::map<unsigned int, PSSMShadowSplitTexture> PSSMShadowSplitTextureMap;
-	PSSMShadowSplitTextureMap							   _PSSMShadowSplitTextureMap;
+	PSSMShadowSplitTextureMap							   map_;
 
 	unsigned int _number_of_splits;
 
