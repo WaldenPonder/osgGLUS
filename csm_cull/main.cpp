@@ -151,8 +151,37 @@ class EventCallback : public osgGA::GUIEventHandler
 	}
 };
 
+void f()
+{
+	vector<int> arr = { 2, 1, 5, 3, 6, 4, 9, 8, 7 };
+
+	int temp;
+
+	for (int i = 1; i < arr.size(); i++)
+	{
+		//待排元素小于有序序列的最后一个元素时，向前插入
+		if (arr[i] < arr[i - 1])
+		{
+			temp = arr[i];
+			for (int j = i; j >= 0; j--)
+			{
+				if (j > 0 && arr[j - 1] > temp)
+				{
+					arr[j] = arr[j - 1];
+				}
+				else
+				{
+					arr[j] = temp;
+					break;
+				}
+			}
+		}
+	}
+}
+
 int main()
 {
+
 	osgViewer::Viewer view;
 	osg::DisplaySettings::instance()->setNumMultiSamples(4);
 
