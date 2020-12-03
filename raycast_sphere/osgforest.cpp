@@ -1493,9 +1493,28 @@ osg::Node* ForestTechniqueManager::createScene(unsigned int numTreesToCreates, u
 
     return scene;
 }
+#define  TWO_PI (2 * osg::PI)
 
 int main( int argc, char **argv )
 {
+
+	for (int i = 0; i <= 99; i++)
+	{
+		double t = 0;
+		for (int n = 0; n <= 99; n++)
+		{
+			double v = cos(TWO_PI * 2 * n / 100.0 + osg::PI / 3.0) + 2 * sin(TWO_PI * 4 * n / 100.) + 0.5 * cos(TWO_PI * 5 * n / 100.);
+
+			v *= cos(TWO_PI * 2 * i / 100.0);
+			//cout << v << "\n";
+			t += v;
+		}
+
+		cout << "---  " << i << "          \t" << t << "\n";
+	}
+
+
+	getchar();
 
     // use an ArgumentParser object to manage the program arguments.
     osg::ArgumentParser arguments(&argc,argv);

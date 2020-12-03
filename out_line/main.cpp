@@ -91,7 +91,7 @@ void read_model(osg::Group* root)
 
 	g_highlightSystem->addHighlight(modelGroup);
 }
-
+/*
 class Base;
 class A;
 class B;
@@ -155,22 +155,10 @@ class C : public Base
 		v.apply(this);
 	}
 };
-
+*/
 
 int main(int argc, char** argv)
 {
-	Base* p = new C;
-	Visitor v;
-	p->accept(v); // "BBASE"
-
-
-	Base* p2 = new A;
-	p2->accept(v); //  "BBASE"
-
-	Base* p3 = new B;
-	p3->accept(v);  //  "BB"
-
-	getchar();
 	osg::ArgumentParser arguments(&argc, argv);
 
 	osg::DisplaySettings::instance()->setNumMultiSamples(4);
