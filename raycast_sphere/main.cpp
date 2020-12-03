@@ -148,11 +148,13 @@ int main()
 	g_root->getOrCreateStateSet()->setAttributeAndModes(cullface, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 	   
 	view.setSceneData(g_root);
-	add_event_handler(view);
+	
 	view.addEventHandler(new EventCallback);
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 	
 	view.getCamera()->getGraphicsContext()->getState()->setUseModelViewAndProjectionUniforms(true);
+
+	add_event_handler(view);
 
 	return view.run();
 }

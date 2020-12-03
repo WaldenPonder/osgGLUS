@@ -19,9 +19,11 @@
 #include <osg/Texture3D>
 #include <random>
 #include "DrawBoundingBox.h"
+#include <thread>
+#include <mutex>
 
-#define ZNEAR_MIN_FROM_LIGHT_SOURCE 5.0
-#define MOVE_VIRTUAL_CAMERA_BEHIND_REAL_CAMERA_FACTOR 0.0
+#define ZNEAR_MIN_FROM_LIGHT_SOURCE 15.0
+#define MOVE_VIRTUAL_CAMERA_BEHIND_REAL_CAMERA_FACTOR 10.0
 
 //////////////////////////////////////////////////////////////////////////
 // clamp variables of any type
@@ -36,12 +38,43 @@ inline Type Clamp(Type A, Type Min, Type Max)
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
-class MainCameraCullingCallback : public osg::NodeCallback
+std::mutex mutex;
+
+osg::Matrixd g_view, g_proj;
+
+class FirstCameraPredrawCallback : public osg::Camera::DrawCallback
 {
  public:
-	virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+	FirstCameraPredrawCallback() {}
+	virtual void operator()(osg::RenderInfo& renderInfo) const
 	{
-		std::cout << "\n";
+		osg::Camera*				 camera = renderInfo.getCurrentCamera();
+		osg::ref_ptr<osg::RefMatrix> proMat = new osg::RefMatrix(camera->getProjectionMatrix());
+		renderInfo.getState()->applyProjectionMatrix(proMat);
+		renderInfo.getState()->applyModelViewMatrix(camera->getViewMatrix());
+
+		osg::Matrixd m2 = camera->getProjectionMatrix();
+
+		if (m2 != g_view)
+		{
+			std::cout << "AAA";
+		}
+
+		osg::Matrixd m = camera->getProjectionMatrix();
+		if (m != g_proj)
+		{
+			std::cout << "BBB";
+		}
+
+		{
+			std::lock_guard<std::mutex> lg(mutex);
+			auto						num = renderInfo.getView()->getFrameStamp()->getFrameNumber();
+			std::cout << "AA1:  " << num << "\t"
+					  << "   time: " << clock() << "\t" << camera->getViewMatrix() << std::endl;
+			std::cout << "AA2:  " << num << "\t"
+					  << "   time: " << clock() << "\t" << camera->getProjectionMatrix() << std::endl;
+		}
+
 		for (auto csm : csmArray_)
 		{
 			osg::Vec3 lightDirection;
@@ -57,15 +90,15 @@ class MainCameraCullingCallback : public osg::NodeCallback
 				continue;
 			}
 
-			for (auto it = csm->_PSSMShadowSplitTextureMap.begin(); it != csm->_PSSMShadowSplitTextureMap.end(); it++)
+			//std::cout << "\n";
+
+			for (auto it = csm->map_.begin(); it != csm->map_.end(); it++)
 			{
 				CascadeShadowMap::PSSMShadowSplitTexture info = it->second;
-				// SETUP pssmShadowSplitTexture for rendering
-				//
 				lightDirection.normalize();
 				info._lightDirection = -lightDirection;
-				info._cameraView = mainCamera_->getViewMatrix();
-				info._cameraProj = mainCamera_->getProjectionMatrix();
+				info._cameraView	 = mainCamera_->getViewMatrix();
+				info._cameraProj	 = mainCamera_->getProjectionMatrix();
 
 				// Calculate corner points of frustum split
 				//
@@ -87,15 +120,84 @@ class MainCameraCullingCallback : public osg::NodeCallback
 				//
 				csm->calculateLightViewProjectionFormFrustum(info, pCorners);
 			}
-
 		}
-	
+	}
+
+	std::vector<osg::ref_ptr<CascadeShadowMap>> csmArray_;
+	osg::ref_ptr<osg::Camera>					mainCamera_;
+};
+
+class MainCameraCullingCallback : public osg::NodeCallback
+{
+ public:
+	virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+	{
+#if 0
+		{
+			auto						num = nv->getFrameStamp()->getFrameNumber();
+			std::lock_guard<std::mutex> lg(mutex);
+			std::cout << "BB1:  " << num << "\t"
+					  << "   time: " << clock() << "\t" << mainCamera_->getViewMatrix() << std::endl;
+			std::cout << "BB2:  " << num << "\t"
+					  << "   time: " << clock() << "\t" << mainCamera_->getProjectionMatrix() << std::endl;
+
+			g_view = mainCamera_->getViewMatrix();
+			g_proj = mainCamera_->getProjectionMatrix();
+		}
+#endif
+
+		for (auto csm : csmArray_)
+		{
+			osg::Vec3 lightDirection;
+
+			if (csm->getLight())
+			{
+				osg::Vec4 dir = csm->getLight()->getPosition();
+				lightDirection.set(dir.x(), dir.y(), dir.z());
+			}
+			else
+			{
+				OSG_WARN << ("CascadeShadowMap 没设置光照, 如果不是一直报，说明light是延迟设置\n");
+				continue;
+			}
+
+			//std::cout << "\n";
+
+			for (auto it = csm->map_.begin(); it != csm->map_.end(); it++)
+			{
+				CascadeShadowMap::PSSMShadowSplitTexture info = it->second;
+				lightDirection.normalize();
+				info._lightDirection = -lightDirection;
+				info._cameraView	 = mainCamera_->getViewMatrix();
+				info._cameraProj	 = mainCamera_->getProjectionMatrix();
+
+				// Calculate corner points of frustum split
+				//
+				// To avoid edge problems, scale the frustum so
+				// that it's at least a few pixels larger
+				//
+				osg::Vec3d pCorners[8];
+				csm->calculateFrustumCorners(info, pCorners);
+
+				// Init Light (Directional Light)
+				//
+				csm->calculateLightInitialPosition(info, pCorners);
+
+				// Calculate near and far for light view
+				//
+				csm->calculateLightNearFarFormFrustum(info, pCorners);
+
+				// Calculate view and projection matrices
+				//
+				csm->calculateLightViewProjectionFormFrustum(info, pCorners);
+			}
+		}
+
 		node->traverse(*nv);
 	}
 
 	std::vector<osg::ref_ptr<CascadeShadowMap>> csmArray_;
-	osg::ref_ptr<osg::Camera>	   mainCamera_;
-	int index = 0;
+	osg::ref_ptr<osg::Camera>					mainCamera_;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -117,15 +219,29 @@ CascadeShadowMap::CascadeShadowMap(Param& param)
 
 	osg::Camera* mainCamera = param.mainCamera;
 
-	MainCameraCullingCallback* callback = dynamic_cast<MainCameraCullingCallback*>(mainCamera->getUserData());
+#if 0
+	FirstCameraPredrawCallback* callback = dynamic_cast<FirstCameraPredrawCallback*>(mainCamera->getUserData());
 
+	if (!callback)
+	{
+		callback = new FirstCameraPredrawCallback;
+		mainCamera->setUserData(callback);
+		callback->mainCamera_ = mainCamera;
+		mainCamera->addPreDrawCallback(callback);
+	}
+
+#else
+
+	MainCameraCullingCallback* callback = dynamic_cast<MainCameraCullingCallback*>(mainCamera->getUserData());
 	if (!callback)
 	{
 		callback = new MainCameraCullingCallback;
 		mainCamera->setUserData(callback);
 		callback->mainCamera_ = mainCamera;
-		callback->mainCamera_->addCullCallback(callback);
+		mainCamera->addCullCallback(callback);
 	}
+
+#endif
 
 	callback->csmArray_.push_back(this);
 }
@@ -144,7 +260,7 @@ void CascadeShadowMap::init()
 		info._texture->setInternalFormat(GL_DEPTH_COMPONENT);
 		info._texture->setSourceFormat(GL_DEPTH_COMPONENT);
 		info._texture->setSourceType(GL_FLOAT);
-#if 0
+#if 1
 		info._texture->setShadowComparison(true);
 		info._texture->setShadowCompareFunc(osg::Texture::LEQUAL);
 		info._texture->setShadowTextureMode(osg::Texture2D::LUMINANCE);
@@ -189,7 +305,7 @@ void CascadeShadowMap::init()
 		std::string name2 = param_.shadow_mat_names[i];
 		info.u_shadow_mat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, name2.c_str());
 
-		_PSSMShadowSplitTextureMap.insert(PSSMShadowSplitTextureMap::value_type(i, info));
+		map_.insert(PSSMShadowSplitTextureMap::value_type(i, info));
 	}
 }
 
@@ -214,21 +330,21 @@ void CascadeShadowMap::addNode(osg::Node* n)
 
 osg::Texture2D* CascadeShadowMap::getTexture(int index)
 {
-	return _PSSMShadowSplitTextureMap[index]._texture;
+	return map_[index]._texture;
 }
 
 void CascadeShadowMap::applyStateset(osg::StateSet* ss, const int firstTextureunit, int& lastTextureunit)
 {
-	lastTextureunit = firstTextureunit + _PSSMShadowSplitTextureMap.size() - 1;
+	lastTextureunit = firstTextureunit + map_.size() - 1;
 
-	for (int i = 0; i < _PSSMShadowSplitTextureMap.size(); i++)
+	for (int i = 0; i < map_.size(); i++)
 	{
 		std::string name = param_.shadow_texture_names[i];
 		ss->setTextureAttributeAndModes(i + firstTextureunit, getTexture(i));
 		ss->addUniform(new osg::Uniform(name.c_str(), i + firstTextureunit));
 
-		ss->addUniform(_PSSMShadowSplitTextureMap[i].u_far_distance_split);
-		ss->addUniform(_PSSMShadowSplitTextureMap[i].u_shadow_mat);
+		ss->addUniform(map_[i].u_far_distance_split);
+		ss->addUniform(map_[i].u_shadow_mat);
 	}
 }
 
@@ -315,7 +431,7 @@ void CascadeShadowMap::applyJittering(osg::StateSet* ss, unsigned int unit)
 void get_far_by_terrain_boundingbox(CascadeShadowMap::Param& param, double camFar, float& my_far)
 {
 	osg::BoundingBox bbTerrain	= param.bbTerrain;
-	osg::Camera* mainCamera = param.mainCamera;
+	osg::Camera*	 mainCamera = param.mainCamera;
 
 	osg::BoundingBox bb;
 	for (int i = 0; i < 8; i++)
@@ -357,7 +473,7 @@ void get_far_by_terrain_boundingbox(CascadeShadowMap::Param& param, double camFa
 
 	for (osg::Vec3d& p : intersectionPTs)
 	{
-		osg::Vec4d pt = osg::Vec4d(p, 1) * mainCamera->getViewMatrix();
+		osg::Vec4d pt  = osg::Vec4d(p, 1) * mainCamera->getViewMatrix();
 		osg::Vec4d pt2 = pt * mainCamera->getProjectionMatrix();
 
 		if (pt.z() < 0)
@@ -392,7 +508,7 @@ void CascadeShadowMap::calculateFrustumCorners(PSSMShadowSplitTexture& info, osg
 	float my_far = -FLT_MAX;
 	get_far_by_terrain_boundingbox(param_, camFar, my_far);
 
-	if (my_far > 1000)
+	if (my_far > 100)
 		camFar = min(camFar, my_far);
 
 	/// CALCULATE SPLIT
@@ -466,7 +582,7 @@ void CascadeShadowMap::calculateLightInitialPosition(PSSMShadowSplitTexture& inf
 }
 
 void CascadeShadowMap::calculateLightNearFarFormFrustum(
-	PSSMShadowSplitTexture& pssmShadowSplitTexture,
+	PSSMShadowSplitTexture& info,
 	osg::Vec3d*				frustumCorners)
 {
 
@@ -476,26 +592,26 @@ void CascadeShadowMap::calculateLightNearFarFormFrustum(
 	// calculate zFar (as longest distance)
 	for (int i = 0; i < 8; i++)
 	{
-		double dist_z_from_light = fabs(pssmShadowSplitTexture._lightDirection * (frustumCorners[i] - pssmShadowSplitTexture._frustumSplitCenter));
+		double dist_z_from_light = fabs(info._lightDirection * (frustumCorners[i] - info._frustumSplitCenter));
 		if (zFar < dist_z_from_light) zFar = dist_z_from_light;
 	}
 
 	// update camera position and look at center
-	pssmShadowSplitTexture._lightCameraSource = pssmShadowSplitTexture._frustumSplitCenter - pssmShadowSplitTexture._lightDirection * (zFar + _split_min_near_dist);
-	pssmShadowSplitTexture._lightCameraTarget = pssmShadowSplitTexture._frustumSplitCenter + pssmShadowSplitTexture._lightDirection * (zFar);
+	info._lightCameraSource = info._frustumSplitCenter - info._lightDirection * (zFar + _split_min_near_dist);
+	info._lightCameraTarget = info._frustumSplitCenter + info._lightDirection * (zFar);
 
 	// calculate [zNear,zFar]
 	zFar = (-DBL_MAX);
 	double zNear(DBL_MAX);
 	for (int i = 0; i < 8; i++)
 	{
-		double dist_z_from_light = fabs(pssmShadowSplitTexture._lightDirection * (frustumCorners[i] - pssmShadowSplitTexture._lightCameraSource));
+		double dist_z_from_light = fabs(info._lightDirection * (frustumCorners[i] - info._lightCameraSource));
 		if (zFar < dist_z_from_light) zFar = dist_z_from_light;
 		if (zNear > dist_z_from_light) zNear = dist_z_from_light;
 	}
 	// update near - far plane
-	pssmShadowSplitTexture._lightNear = max(zNear - _split_min_near_dist - 0.01, 0.01);
-	pssmShadowSplitTexture._lightFar  = zFar;
+	info._lightNear = max(zNear - _split_min_near_dist - 0.01, 0.01);
+	info._lightFar	= zFar;
 }
 
 void CascadeShadowMap::calculateLightViewProjectionFormFrustum(PSSMShadowSplitTexture& info, osg::Vec3d* frustumCorners)
@@ -534,13 +650,18 @@ void CascadeShadowMap::calculateLightViewProjectionFormFrustum(PSSMShadowSplitTe
 		if (lTop < minTop) minTop = lTop;
 	}
 
+	//info._lightCameraSource.z() = 1000;
+	//info._lightCameraTarget = info._lightCameraSource - osg::Vec3(0, 0, 1);
 	osg::Matrixd viewMat = osg::Matrixd::lookAt(info._lightCameraSource, info._lightCameraTarget, top);
 	// make the camera view matrix
 	info._camera->setViewMatrix(viewMat);
-	
-	osg::Matrixd projMat = osg::Matrixd::ortho(minRight, maxRight, minTop, maxTop, info._lightNear - 100, info._lightFar + 1e3);
-
-	//std::cout << "NF:\t" << info._lightNear << "\t" << info._lightFar << "\n";
+	float factor = 1.0;
+	//std::cout << "EYE: " << clock() << info._lightCameraSource << "\t" << info._lightCameraTarget << "\n";
+	osg::Matrixd projMat = osg::Matrixd::ortho(minRight * factor, maxRight * factor, minTop * factor, maxTop * factor, info._lightNear, info._lightFar);
+	//projMat = osg::Matrixd::ortho(-9156.33 ,   9316.54 ,- 5722.19,    5671.82 ,   87.1397  , 8924.03);
+	//std::cout << "NF:\t" << clock() << "\t"  << minRight << "    "<<  maxRight << "    " <<  minTop << "    "
+	//	<< maxTop << "    " << info._lightNear << "\t" << info._lightFar << "\n";
+	//projMat = osg::Matrix::perspective(60, 1, info._lightNear, info._lightFar);
 	// use ortho projection for light (directional light only supported)
 	info._camera->setProjectionMatrix(projMat);
 
@@ -548,6 +669,6 @@ void CascadeShadowMap::calculateLightViewProjectionFormFrustum(PSSMShadowSplitTe
 	osg::Vec3d vProjCamFraValue = (camEye + viewDir * info._split_far) * (info._cameraView * info._cameraProj);
 	info.u_far_distance_split->set(( float )vProjCamFraValue.z());
 
-	osg::Matrix	 mat		= osg::Matrixd::inverse(param_.mainCamera->getViewMatrix()) * viewMat * projMat;
+	osg::Matrix mat = osg::Matrixd::inverse(param_.mainCamera->getViewMatrix()) * viewMat * projMat;
 	info.u_shadow_mat->set(mat);
 }

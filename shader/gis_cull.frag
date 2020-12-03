@@ -16,13 +16,15 @@ varying vec4 posInGISRegionSpace3;
 
 
 //饱和度和亮度系数
-const float faturation = 1.3;
+const float faturation = 1.5;
 const float brightness = 1.5;
 
-
+float fTexelSize= 1.41 / 4096.0;
+float fZOffSet  = -0.001954;
+   
 //----------------------------------------------------------------------------my_sample
 float my_sample( sampler2DShadow TEXTURE, vec4 sc )
-{
+{   
 #if 1
     //gaussian
     float shadow = 0.0;                                                                                                     
@@ -75,6 +77,15 @@ float my_sample( sampler2DShadow TEXTURE, vec4 sc )
 	
 	return shadow;
 #endif
+
+   float shadowOrg1 = textureProj(TEXTURE, sc + vec4(0.0,0.0,fZOffSet, 0));
+   float shadow01 = textureProj(TEXTURE, sc + vec4(-fTexelSize,-fTexelSize,fZOffSet, 0));
+   float shadow11 = textureProj(TEXTURE, sc + vec4(fTexelSize,-fTexelSize,fZOffSet, 0));
+   float shadow21 = textureProj(TEXTURE, sc + vec4(fTexelSize,fTexelSize,fZOffSet, 0));
+   float shadow31 = textureProj(TEXTURE, sc + vec4(-fTexelSize,fTexelSize,fZOffSet, 0));
+   float shadow1 = (2 * shadowOrg1 + shadow01 + shadow11 + shadow21 + shadow31) / 6.0;	
+    
+   return shadow1;
 }
 
 
@@ -88,7 +99,7 @@ bool gis_cull(inout vec4 color)
 	float map2 = step(u_zgis_CULL1, testZ) * step(testZ, u_zgis_CULL2);
 	float map3 = step(u_zgis_CULL2, testZ) * step(testZ, u_zgis_CULL3);
 		
-#if 1
+#if 0
 	float shadow1 = textureProj(u_GISCullTexture1, posInGISRegionSpace1); 
 	float shadow2 = textureProj(u_GISCullTexture2, posInGISRegionSpace2); 
 	float shadow3 = textureProj(u_GISCullTexture3, posInGISRegionSpace3); 
@@ -101,10 +112,10 @@ bool gis_cull(inout vec4 color)
 	float term1 = (1.0 - shadow1) * map1;
 	float term2 = (1.0 - shadow2) * map2;
 	float term3 = (1.0 - shadow3) * map3;
-	
+		  
 	float v = clamp(term1 + term2 + term3, 0, 1);
-	//gl_FragColor.rgb  = vec3(map1, map2, map3);
-	//color.a = 1 - v;//1 - v;//vec3(0, shadow2, 0);
+	//color.rgb  = vec3(map1, map2, map3);
+	color.a = 1 - v;//1 - v;//vec3(0, shadow2, 0);
 	//color.rgb = color.a;
 	
 	//if(v != 0)
