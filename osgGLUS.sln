@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.779
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30717.126
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Example03", "Example03\Example03.vcxproj", "{5F1857E7-B385-491A-B41F-1B937B4D4354}"
 EndProject
@@ -30,6 +30,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "csm_cull", "csm_cull\csm_cull.vcxproj", "{FC9AC67C-8A8C-4772-8637-34A2957B71B7}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "out_line2", "out_line2\out_line2.vcxproj", "{6FEBEF65-AB05-42BF-8E9E-0BBB69B88524}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "line_hole", "line_hole\line_hole.vcxproj", "{B8EE7B5A-2832-4C73-B696-030D1298F6CC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -135,6 +137,14 @@ Global
 		{6FEBEF65-AB05-42BF-8E9E-0BBB69B88524}.Release|x64.Build.0 = Release|x64
 		{6FEBEF65-AB05-42BF-8E9E-0BBB69B88524}.Release|x86.ActiveCfg = Release|Win32
 		{6FEBEF65-AB05-42BF-8E9E-0BBB69B88524}.Release|x86.Build.0 = Release|Win32
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Debug|x64.ActiveCfg = Debug|x64
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Debug|x64.Build.0 = Debug|x64
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Debug|x86.ActiveCfg = Debug|Win32
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Debug|x86.Build.0 = Debug|Win32
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Release|x64.ActiveCfg = Release|x64
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Release|x64.Build.0 = Release|x64
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Release|x86.ActiveCfg = Release|Win32
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -152,6 +162,7 @@ Global
 		{C923F3C5-7A5D-4057-9143-AA683F2D9022} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 		{FC9AC67C-8A8C-4772-8637-34A2957B71B7} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 		{6FEBEF65-AB05-42BF-8E9E-0BBB69B88524} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
+		{B8EE7B5A-2832-4C73-B696-030D1298F6CC} = {F86D3070-2D80-4847-BFF1-A4D9E0353426}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6E50A045-43C6-4C21-81A1-66F79702C4E5}

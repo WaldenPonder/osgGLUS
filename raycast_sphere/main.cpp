@@ -9,7 +9,7 @@
 #include "osg/MatrixTransform"
 
 osgViewer::Viewer* g_viewer = nullptr;
-int				   g_size   = 60;
+int				   g_size   = 6;
 
 osg::Group* g_group1 = nullptr;
 osg::Group* g_group2 = nullptr;

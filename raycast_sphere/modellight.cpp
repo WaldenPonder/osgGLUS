@@ -107,7 +107,7 @@ osg::Group* scene2()
 	return root;
 }
 
-int main()
+int main2()
 {
 	osgViewer::Viewer view;
 	g_viewer = &view;
