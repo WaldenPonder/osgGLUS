@@ -20,10 +20,11 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{AFD6E089-4966-4C5D-8135-E53FDB8F9947}</ProjectGuid>
+    <ProjectGuid>{B8EE7B5A-2832-4C73-B696-030D1298F6CC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>customdrawable</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>line_hole</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
