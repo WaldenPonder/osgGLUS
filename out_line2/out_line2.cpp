@@ -7,6 +7,7 @@ osg::Node* test1(osg::Node* n)
 	p->addChild(n);
 	osg::ref_ptr<osg::Program> program = new osg::Program;
 	program->addShader(osgDB::readShaderFile(shader_dir() + "/outline2/out_line.vert"));
+	program->addShader(osgDB::readShaderFile(shader_dir() + "/outline2/out_line.geom"));
 	program->addShader(osgDB::readShaderFile(shader_dir() + "/outline2/out_line.frag"));
 	p->getOrCreateStateSet()->setAttributeAndModes(program);
 
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
 	//auto* n = osgDB::readNodeFile("F:\\BaiduYunDownload\\A匝道2号桥.osgb");
 	auto* n = osgDB::readNodeFile("F:/model/cube.obj");
 
-	root->addChild(test0(n));
+	//root->addChild(test0(n));
 	root->addChild(test1(n));
 
 	viewer.setSceneData(root);
