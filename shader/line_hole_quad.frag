@@ -26,7 +26,7 @@ bool onSegment(vec2 p, vec2 q, vec2 r)
   
     return false; 
 } 
-  
+//https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/  
 // To find orientation of ordered triplet (p, q, r). 
 // The function returns following values 
 // 0 --> p, q and r are colinear 
