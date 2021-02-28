@@ -11,6 +11,9 @@
 #define TEXTURE_SIZE1 1920
 #define TEXTURE_SIZE2 1080
 
+//#define TEXTURE_SIZE1 2048
+//#define TEXTURE_SIZE2 2048
+
 osg::Group* g_root;
 osg::BoundingBox g_line_bbox;
 osg::Vec4 CLEAR_COLOR(0, 0, 0, 1);// (204 / 255, 213 / 255, 240 / 255, 1);
@@ -76,6 +79,7 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const osg::Vec3
 	osg::Program* program = new osg::Program;
 	program->setName("LINESTRIPE");
 	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole.vert"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::GEOMETRY, shader_dir() + "/line_hole.geom"));
 	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole.frag"));
 
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
@@ -93,11 +97,16 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const osg::Vec3
 	pGeometry->setVertexAttribArray(2, a_id, osg::Array::BIND_PER_VERTEX);
 	pGeometry->setVertexAttribBinding(2, osg::Geometry::BIND_PER_VERTEX);
 	program->addBindAttribLocation("a_id", 2);
-
+	   
 	//-----------------------------------------------uniform
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
 	u_MVP->setUpdateCallback(new MVPCallback(camera));
 	ss->addUniform(u_MVP);
+
+	osg::Matrix windowMat = camera->getViewport()->computeWindowMatrix();
+	osg::Uniform* u_mat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "windowMat");
+	u_mat->set(windowMat);
+	ss->addUniform(u_mat);
 
 	return pGeometry.release();
 }
@@ -110,7 +119,7 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	vector<osg::Vec3>		 PTs, COLORs;
 
-	float z = 1.5f;
+	float z = 0.5f;
 	PTs.push_back(osg::Vec3(2, 0, z));
 	PTs.push_back(osg::Vec3(-2, 0, z));
 	osg::Vec3 id1(rd(eng), rd(eng), rd(eng));
@@ -125,10 +134,10 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	//-------------------------------------------------
 	PTs.clear();
 	z = 0;
-	PTs.push_back(osg::Vec3(-1, -1, z));
+	PTs.push_back(osg::Vec3(-1, -1.3, z));
 	PTs.push_back(osg::Vec3(1, -1, z));
 	PTs.push_back(osg::Vec3(1, 1, z));
-	PTs.push_back(osg::Vec3(-1, 1, z));
+	PTs.push_back(osg::Vec3(-1, 1.3, z));
 	osg::Vec3 id2(rd(eng), rd(eng), rd(eng));
 	osg::Geometry* n2 = createLine2(PTs, osg::Vec3(0, 1, 0), id2, view.getCamera());
 	n2->setName("LINE2");
@@ -183,7 +192,7 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 {
 	auto create_texture = [&]() {
 		osg::Texture2D* texture2d = new osg::Texture2D;
-		texture2d->setTextureSize(1920, 1080);
+		texture2d->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 		texture2d->setInternalFormat(GL_RGBA);
 		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
 		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
@@ -194,7 +203,7 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 	{
 		// Setup shadow texture
 		osg::Texture2D* texture = new osg::Texture2D;
-		texture->setTextureSize(1920, 1080);
+		texture->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 		texture->setInternalFormat(GL_DEPTH_COMPONENT);
 		texture->setShadowComparison(true);
 		texture->setShadowTextureMode(osg::Texture2D::LUMINANCE);
@@ -224,13 +233,17 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 	rttCamera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 
 	osg::Texture2D* texture = create_texture();
-	osg::Texture2D* depthTexture = create_depth_texture();
+	osg::Texture2D* depthTexture = create_texture();
 	osg::Texture2D* idTexture = create_texture();
+	osg::Texture2D* startPtTexture = create_texture();
+	//osg::Texture2D* endPtTexture = create_texture();
 
 	// attach the texture and use it as the color buffer.
 	rttCamera->attach(osg::Camera::COLOR_BUFFER0, texture, 0, 0, false);
 	rttCamera->attach(osg::Camera::COLOR_BUFFER1, idTexture, 0, 0, false);
-	rttCamera->attach(osg::Camera::DEPTH_BUFFER, depthTexture);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER2, depthTexture,0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER3, startPtTexture, 0, 0, false);
+	//rttCamera->attach(osg::Camera::COLOR_BUFFER4, endPtTexture, 0, 0, false);
 
 	osg::Camera* mainCamera = viewer->getCamera();
 	rttCamera->setProjectionMatrix(mainCamera->getProjectionMatrix());
@@ -239,7 +252,7 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 
 	rttCamera->addChild(create_lines(*viewer));
 
-	return { texture, depthTexture, idTexture };
+	return { texture, depthTexture, idTexture, startPtTexture};
 }
 
 //最终显示的贴图
@@ -280,7 +293,8 @@ osg::Camera* createHudCamera(osgViewer::Viewer* viewer, std::vector<osg::Texture
 		ss->setTextureAttributeAndModes(0, TEXTURES[0], osg::StateAttribute::ON);
 		ss->setTextureAttributeAndModes(1, TEXTURES[1], osg::StateAttribute::ON);
 		ss->setTextureAttributeAndModes(2, TEXTURES[2], osg::StateAttribute::ON);
-
+		ss->setTextureAttributeAndModes(3, TEXTURES[3], osg::StateAttribute::ON);
+		
 		osg::ref_ptr<osg::Program> program = new osg::Program;
 		osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole_quad.vert");
 		osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole_quad.frag");
@@ -289,6 +303,8 @@ osg::Camera* createHudCamera(osgViewer::Viewer* viewer, std::vector<osg::Texture
 		ss->addUniform(new osg::Uniform("baseTexture", 0));
 		ss->addUniform(new osg::Uniform("depthTexture", 1));
 		ss->addUniform(new osg::Uniform("idTexture", 2));
+		ss->addUniform(new osg::Uniform("startPtTexture", 3));
+	//	ss->addUniform(new osg::Uniform("endPtTexture", 4));
 		ss->setAttributeAndModes(program, osg::StateAttribute::ON);
 	}
 
@@ -301,6 +317,7 @@ int main()
 	osg::Group* root = new osg::Group;
 	g_root = root;
 	view.setSceneData(root);
+	view.realize();
 
 	std::vector<osg::Texture2D*> textures = createRttCamera(&view);
 	osg::Camera* hud_camera = createHudCamera(&view, textures);
@@ -320,7 +337,7 @@ int main()
 	add_event_handler(view);
 
 	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
-	view.realize();
+	
 
 	return view.run();
 }
