@@ -154,6 +154,23 @@ osg::Node* create_lines(osgViewer::Viewer& view)
 	n3->setName("LINE3");
 	geode->addDrawable(n3);
 
+	std::uniform_real_distribution<float> rd2(-5, 5); 
+	for (int i = 0; i < 1000; i++)
+	{
+		PTs.clear();
+		
+		float Z = i * 0.1;
+
+		osg::Vec3 id1(rd(eng), rd(eng), rd(eng));
+		PTs.push_back(osg::Vec3(rd2(eng), rd2(eng), Z));
+		PTs.push_back(osg::Vec3(rd2(eng), rd2(eng), Z));
+		PTs.push_back(osg::Vec3(rd2(eng), rd2(eng), Z));
+		PTs.push_back(osg::Vec3(rd2(eng), rd2(eng), Z));
+
+		osg::Geometry* n3 = createLine2(PTs, id1, id1, view.getCamera());
+		n3->setName("LINE3");
+		geode->addDrawable(n3);
+	}
 	//uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
 	//uniform->set(osg::Vec4(0, 1, 0, 1.));
 	//n2->getOrCreateStateSet()->addUniform(uniform);
