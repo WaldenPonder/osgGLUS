@@ -43,11 +43,11 @@ osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
 osg::ref_ptr<osg::TextureBuffer> create_tbo(const vector<int>& data)
 {
 	osg::ref_ptr<osg::Image> image = new osg::Image;
-	image->allocateImage(data.size(), 1, 1, GL_R32I, GL_FLOAT);
+	image->allocateImage(data.size(), 1, 1, GL_R32I, GL_INT);
 
 	for (int i = 0; i < data.size(); i++)
 	{
-		float* ptr = (float*)image->data(i);
+		int* ptr = (int*)image->data(i);
 		*ptr = data[i];
 	}
 
@@ -230,8 +230,8 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 		osg::Texture2D* texture2d = new osg::Texture2D;
 		texture2d->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 		texture2d->setInternalFormat(GL_R32UI);
-		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
+		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
 		return texture2d;
 	};
 

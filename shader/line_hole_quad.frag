@@ -3,8 +3,8 @@ uniform sampler2D baseTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D idTexture;
 uniform sampler2D linePtTexture;
-uniform samplerBuffer textureBuffer1;
-uniform samplerBuffer textureBuffer2;
+uniform isamplerBuffer textureBuffer1;
+uniform isamplerBuffer textureBuffer2;
 
 in vec2 texcoord;
 out vec4 fragColor;
@@ -23,18 +23,35 @@ int to_int(float f)
   return int(f);
 }
 
+//与遍历id1 相连接的所以对象，查看id2是否在其中
 bool is_connected(int id1, int id2)
-{
-  int index = to_int(texelFetch(textureBuffer1, id1).r);
+{   
+  //id 从1开始，零被认为是无效数据
+  if(id1 == 0 || id2 == 0) return false;
+  
+  int index = texelFetch(textureBuffer1, id1).r;
   
   if(index == 0)
     return false;
+  
+  
+  int max_connected = 100;
+  int i = 0;
+  
+  while(true)
+  {
+	int index2 = texelFetch(textureBuffer2, index).r;
+	if(index2 == id2) return true;
+	//else if(index2 == 0) return false;  //index2 == 0, 代表所以与id1连接的对象已经遍历
+	index++;
 	
-  int index2 = to_int(texelFetch(textureBuffer2, index).r);
-  if(index2 == id2) return true;
+	i++;
+	if(i > max_connected) return false;
+  }
   
   return false;
 }
+
 
 // Given three colinear points p, q, r, the function checks if 
 // point q lies on line segment 'pr' 
@@ -97,27 +114,14 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 
 void main()
 {	
-float aaa = texelFetch(textureBuffer2, 0).r;
-  if(aaa == 3.0) {
-    	//  fragColor =  vec4(1,0,0,1);
-	//	return;	
-	}
-
 	float id_ = texture(idTexture, texcoord).r;
 	int id = int(id_);
 	int range = 10;
 	
-	float ii_ = texelFetch(textureBuffer1, id).r;
-	//int ii = int(ii_);
-    if(ii_ == 123)
-	{
-	  fragColor =  vec4(1,1,0,1);
-		//				return;						
-	}
-	
-	//fragColor = texelFetch(textureBuffer1, 0);
-	//return;
-	
+	// if(id == 39939912)
+	// {
+	 // fragColor = vec4(1,1,0,1); return;
+	// }
 
 	if(id != 0)
 	{
