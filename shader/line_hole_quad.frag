@@ -1,20 +1,40 @@
+#version 430 compatibility
 uniform sampler2D baseTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D idTexture;
-uniform sampler2D startPtTexture;
-//uniform sampler2D endPtTexture;
+uniform sampler2D linePtTexture;
+uniform samplerBuffer textureBuffer1;
+uniform samplerBuffer textureBuffer2;
 
-varying vec2 texcoord;
+in vec2 texcoord;
+out vec4 fragColor;
 
 bool is_equal(in vec4 v1, in vec4 v2)
 {
    vec4 delta = abs(v1 - v2);
-   if(delta.r + delta.g + delta.b < 0.01)
+   if(delta.r + delta.g + delta.b < 0.001)
     return true;
 	
 	return false;
 }
 
+int to_int(float f)
+{
+  return int(f);
+}
+
+bool is_connected(int id1, int id2)
+{
+  int index = to_int(texelFetch(textureBuffer1, id1).r);
+  
+  if(index == 0)
+    return false;
+	
+  int index2 = to_int(texelFetch(textureBuffer2, index).r);
+  if(index2 == id2) return true;
+  
+  return false;
+}
 
 // Given three colinear points p, q, r, the function checks if 
 // point q lies on line segment 'pr' 
@@ -77,31 +97,50 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 
 void main()
 {	
-	vec4 id = texture(idTexture, texcoord);
+float aaa = texelFetch(textureBuffer2, 0).r;
+  if(aaa == 3.0) {
+    	//  fragColor =  vec4(1,0,0,1);
+	//	return;	
+	}
+
+	float id_ = texture(idTexture, texcoord).r;
+	int id = int(id_);
 	int range = 10;
 	
-	if(!is_equal(id, vec4(0)))
+	float ii_ = texelFetch(textureBuffer1, id).r;
+	//int ii = int(ii_);
+    if(ii_ == 123)
+	{
+	  fragColor =  vec4(1,1,0,1);
+		//				return;						
+	}
+	
+	//fragColor = texelFetch(textureBuffer1, 0);
+	//return;
+	
+
+	if(id != 0)
 	{
 	    vec4 depth = texture(depthTexture, texcoord);
 	    for(int i = -range; i <= range; ++i)                                                                                             
 		{                                                                                                                         
 			for(int j = -range; j <= range; ++j)                                                                                          
 			{                   
-			   vec2 uv = texcoord + vec2(i / 1920.0, j / 1080.0);		
-			   vec4 id2 = texture(idTexture, uv);
-			   
-			   if(!is_equal(id2, vec4(0))  && !is_equal(id, id2))
+			   vec2 uv = texcoord + vec2(i / 1024.0, j / 1024.0);		
+			   float id2_ = texture(idTexture, uv).r;
+			   int id2 = int(id2_);
+			   if(id2 != 0 && id != id2 && !is_connected(id2, id))
 			   {
 				  float val = texture(depthTexture, uv).r;
 				  if(val < depth.r)
 				  {
-				    vec4 p1 = texture(startPtTexture, texcoord);
-					vec4 p2 = texture(startPtTexture, uv);
+				    vec4 p1 = texture(linePtTexture, texcoord);
+					vec4 p2 = texture(linePtTexture, uv);
 					
 					if(!is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) 
 					&& doIntersect(p1.xy, p1.zw, p2.xy, p2.zw))
 					{					
-						gl_FragColor =  vec4(0,0,0,1);
+						fragColor =  vec4(0,0,0,1);
 						return;
 					}
 				  }
@@ -110,11 +149,11 @@ void main()
 		}           
 	}
 	
-  // vec4 result2 = texture(startPtTexture, texcoord);
- //  gl_FragColor = result2;
+  // vec4 result2 = texture(linePtTexture, texcoord);
+ //  fragColor = result2;
   // return;
   
    //vec4 dp = texture(depthTexture, texcoord);					 
-   vec4 result = texture( baseTexture, texcoord);
-   gl_FragColor = result;
+   vec4 result = texture(baseTexture, texcoord);
+   fragColor = result;
 }

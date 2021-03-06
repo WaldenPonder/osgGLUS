@@ -1,14 +1,14 @@
-#version 430 
+#version 430 compatibility
 layout (location=0) in vec3 a_pos;
 layout (location=1) in vec3 a_color;
-layout (location=2) in vec3 a_id;
+layout (location=2) in uint a_id;
 
 uniform mat4 u_MVP;
 //uniform mat4  osg_ModelViewProjectionMatrix;
 
 
 out VS_OUT {
-	flat vec3 v_id;
+	flat uint v_id;
     vec3 v_color;
 } gs_in;
 

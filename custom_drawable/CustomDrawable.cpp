@@ -36,6 +36,9 @@ CustomDrawable::CustomDrawable()
 
 void CustomDrawable::drawImplementation(osg::RenderInfo& info) const
 {
+	int size = 0;
+	glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &size);
+
 	const char* version = (const char*)glGetString(GL_VERSION);
 	//cout << "AAA " << version << endl;
 
