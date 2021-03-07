@@ -76,8 +76,10 @@ int orientation(vec2 p, vec2 q, vec2 r)
     float val = (q.y - p.y) * (r.x - q.x) - 
               (q.x - p.x) * (r.y - q.y); 
   
-    if (abs(val) < 0.0001) return 0;  // colinear 
+    if (abs(val) < 0.00001) return 0;  // colinear 
   
+   // if(val == 0) return 0;
+	
     return (val > 0)? 1: 2; // clock or counterclock wise 
 } 
   
@@ -112,6 +114,13 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
     return false; // Doesn't fall in any of the above cases 
 } 
 
+
+float unpackRgbaToFloat(vec4 _rgba)
+{
+	const vec4 shift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
+	return dot(_rgba, shift);
+}
+
 void main()
 {	
 	float id_ = texture(idTexture, texcoord).r;
@@ -125,7 +134,7 @@ void main()
 
 	if(id != 0)
 	{
-	    vec4 depth = texture(depthTexture, texcoord);
+	    float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
 	    for(int i = -range; i <= range; ++i)                                                                                             
 		{                                                                                                                         
 			for(int j = -range; j <= range; ++j)                                                                                          
@@ -135,7 +144,7 @@ void main()
 			   int id2 = int(id2_);
 			   if(id2 != 0 && id != id2 && !is_connected(id2, id))
 			   {
-				  float val = texture(depthTexture, uv).r;
+				  float val = unpackRgbaToFloat(texture(depthTexture, uv));
 				  if(val < depth.r)
 				  {
 				    vec4 p1 = texture(linePtTexture, texcoord);

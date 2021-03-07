@@ -14,6 +14,7 @@ flat out vec4 v_linePt;
 
 void main() 
 {  
+   //TODO:  需要考虑当落在屏幕之外的情况
     vec4 p1 = gl_in[0].gl_Position / gl_in[0].gl_Position.w;
 	vec4 p2 = gl_in[1].gl_Position / gl_in[1].gl_Position.w;
 

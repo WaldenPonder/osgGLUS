@@ -59,7 +59,8 @@ osg::ref_ptr<osg::TextureBuffer> create_tbo(const vector<int>& data)
 
 //https://blog.csdn.net/qq_16123279/article/details/82463266
 
-osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const osg::Vec3& color, const uint32_t& id, osg::Camera* camera)
+osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const std::vector<osg::Vec3>& colors,
+	const std::vector<int>& ids, osg::Camera* camera, osg::PrimitiveSet::Mode mode = osg::PrimitiveSet::LINE_LOOP)
 {
 	cout << "osg::getGLVersionNumber" << osg::getGLVersionNumber() << endl;
 
@@ -79,13 +80,21 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const osg::Vec3
 	}
 
 	osg::ref_ptr<osg::ElementBufferObject> ebo = new osg::ElementBufferObject;
-	osg::ref_ptr<osg::DrawElementsUInt>	indices = new osg::DrawElementsUInt(osg::PrimitiveSet::LINE_LOOP);
+	osg::ref_ptr<osg::DrawElementsUInt>	indices = new osg::DrawElementsUInt(mode);
 
 	for (unsigned int i = 0; i < allPTs.size(); i++)
 	{
 		indices->push_back(i);
-		a_color->push_back(color);
-		a_id->push_back(id);
+
+		if(i < colors.size())
+		   a_color->push_back(colors[i]);
+		else
+			a_color->push_back(colors.back());
+
+		if(i < ids.size())
+		   a_id->push_back(ids[i]);
+		else
+			a_id->push_back(ids.back());
 	}
 
 	indices->setElementBufferObject(ebo);
@@ -132,88 +141,8 @@ osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const osg::Vec3
 	return pGeometry.release();
 }
 
-osg::Node* create_lines(osgViewer::Viewer& view)
-{
-	std::default_random_engine eng(time(NULL));
-	std::uniform_real_distribution<float> rd(0, 1);
 
-	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-	vector<osg::Vec3>		 PTs, COLORs;
-
-	float z = 0.5f;
-	PTs.push_back(osg::Vec3(2, 0, z));
-	PTs.push_back(osg::Vec3(-2, 0, z));
-	osg::Geometry* n = createLine2(PTs, osg::Vec3(1, 0, 0), 1, view.getCamera());
-	n->setName("LINE1");
-	geode->addDrawable(n);
-
-	//-------------------------------------------------
-	PTs.clear();
-	z = 0;
-	PTs.push_back(osg::Vec3(-1, -1.3, z));
-	PTs.push_back(osg::Vec3(1, -1, z));
-	PTs.push_back(osg::Vec3(1, 1, z));
-	PTs.push_back(osg::Vec3(-1, 1.3, z));
-	osg::Geometry* n2 = createLine2(PTs, osg::Vec3(0, 1, 0), 2, view.getCamera());
-	n2->setName("LINE2");
-	geode->addDrawable(n2);
-
-	PTs.clear();
-	z = -0.5;
-	PTs.push_back(osg::Vec3(-1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, 1.5, z));
-	PTs.push_back(osg::Vec3(-1.5, 1.5, z));
-
-	osg::Geometry* n3 = createLine2(PTs, osg::Vec3(0, 0, 1), 3, view.getCamera());
-	n3->setName("LINE3");
-	geode->addDrawable(n3);
-	
-	vector<int> index1(100);
-	index1[1] = 1;
-	index1[2] = 0;
-	index1[3] = 2;
-	g_textureBuffer1 = create_tbo(index1);
-	
-	vector<int> index2(100);
-	index2[1] = 3;
-	index2[2] = 1;
-
-	g_textureBuffer2 = create_tbo(index2);
-
-	//uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-	//uniform->set(osg::Vec4(0, 1, 0, 1.));
-	//n2->getOrCreateStateSet()->addUniform(uniform);
-
-	osg::ComputeBoundsVisitor cbbv;
-	geode->accept(cbbv);
-	g_line_bbox = cbbv.getBoundingBox();
-
-	return geode.release();
-}
-
-class CameraPredrawCallback : public osg::Camera::DrawCallback
-{
-public:
-	osg::observer_ptr<osg::Camera> rttCamera;
-	osg::observer_ptr<osg::Camera> mainCamera;
-
-	CameraPredrawCallback(osg::Camera* first, osg::Camera* main) : rttCamera(first), mainCamera(main) {}
-	virtual void operator()(osg::RenderInfo& renderInfo) const
-	{
-		osg::Viewport* vp = mainCamera->getViewport();
-
-		if (rttCamera.get())
-		{
-			rttCamera->setProjectionMatrix(mainCamera->getProjectionMatrix());
-			rttCamera->setViewMatrix(mainCamera->getViewMatrix());
-
-			osg::ref_ptr<osg::RefMatrix> proMat = new osg::RefMatrix(rttCamera->getProjectionMatrix());
-			renderInfo.getState()->applyProjectionMatrix(proMat);
-			renderInfo.getState()->applyModelViewMatrix(rttCamera->getViewMatrix());
-		}
-	}
-};
+#include "scene.h"
 
 std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 {
@@ -230,6 +159,8 @@ std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer)
 		osg::Texture2D* texture2d = new osg::Texture2D;
 		texture2d->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
 		texture2d->setInternalFormat(GL_R32UI);
+		texture2d->setSourceFormat(GL_R32UI);
+		texture2d->setSourceType(GL_UNSIGNED_INT);
 		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
 		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
 		return texture2d;
@@ -445,7 +376,7 @@ int main()
 
 	add_event_handler(view);
 
-	osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
+	//osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 	
 
 	return view.run();
