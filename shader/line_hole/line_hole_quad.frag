@@ -11,11 +11,12 @@ out vec4 fragColor;
 
 bool is_equal(in vec4 v1, in vec4 v2)
 {
-	vec4 delta = abs(v1 - v2);
-	if(delta.r + delta.g + delta.b + delta.a < 0.01)
-		return true;
+	return all(equal(v1, v2));
+	// vec4 delta = abs(v1 - v2);
+	// if(delta.r + delta.g + delta.b + delta.a < 0.01)
+		// return true;
 
-	return false;
+	// return false;
 }
 
 int to_int(float f)
