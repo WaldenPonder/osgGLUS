@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "LineHole.h"
 #include "osg/BlendFunc"
+#include <osg/PolygonOffset>
 
 std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer)
 {
@@ -74,8 +75,7 @@ std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer
 	rttCamera->addPreDrawCallback(new CameraPredrawCallback(rttCamera, mainCamera));
 
 	rttCamera->addChild(create_lines(*viewer));
-	rttCamera->addChild(g_hidden_line_geode);
-
+	
 	return { g_texture, g_depthTexture, g_idTexture, g_linePtTexture };
 }
 
@@ -167,10 +167,8 @@ void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 	osg::Depth* depth = new osg::Depth(osg::Depth::GREATER);
 	ss->setAttributeAndModes(depth, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
-	ss->setAttributeAndModes(new osg::LineStipple(1, 0x00ff), osg::StateAttribute::ON);
+	ss->setAttributeAndModes(new osg::LineStipple(1, 0x0fff), osg::StateAttribute::ON);
 
-	//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-	ss->setRenderBinDetails(10, "RenderBin");
 	//------------------------osg::Program-----------------------------
 	osg::Program* program = new osg::Program;
 	program->setName("line_hole");
@@ -178,18 +176,12 @@ void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 	program->addShader(osgDB::readShaderFile(osg::Shader::GEOMETRY, shader_dir() + "/line_hole/line_hole_dot_line.geom"));
 	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/line_hole_dot_line.frag"));
 
-	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
+	ss->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 
 	//-----------attribute  addBindAttribLocation
 	program->addBindAttribLocation("a_pos", 0);
 	program->addBindAttribLocation("a_color", 1);
 	program->addBindAttribLocation("a_id", 2);
-
-	//osg::Uniform* u_is_hidden_line = new osg::Uniform(osg::Uniform::BOOL, "u_is_hidden_line");
-	//u_is_hidden_line->set(true);
-	//ss->addUniform(u_is_hidden_line, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-	//ss->setTextureAttributeAndModes(0, g_depthTexture, osg::StateAttribute::ON);
-	//ss->addUniform(new osg::Uniform("depthTexture", 0));
 
 	//-----------------------------------------------uniform
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
@@ -199,9 +191,6 @@ void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 
 void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera)
 {
-	//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-	//ss->setRenderBinDetails(20, "RenderBin");
-
 	osg::Depth* depth = new osg::Depth(osg::Depth::LEQUAL);
 	ss->setAttributeAndModes(depth, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
@@ -224,15 +213,6 @@ void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera)
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
 	u_MVP->setUpdateCallback(new MVPCallback(camera));
 	ss->addUniform(u_MVP);
-
-	//osg::Uniform* u_is_hidden_line = new osg::Uniform(osg::Uniform::BOOL, "u_is_hidden_line");
-	//u_is_hidden_line->set(false);
-	//ss->addUniform(u_is_hidden_line, osg::StateAttribute::ON);// | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-
-	//osg::Matrix windowMat = camera->getViewport()->computeWindowMatrix();
-	//osg::Uniform* u_mat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "windowMat");
-	//u_mat->set(windowMat);
-	//ss->addUniform(u_mat);
 }
 
 osg::Geometry* LineHole::createFinalHudTextureQuad(osg::ref_ptr<osg::Program> program, const osg::Vec3& corner,
@@ -332,15 +312,18 @@ osg::Geometry* LineHole::myCreateTexturedQuadGeometry2(osg::Camera* camera, int 
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
 
 	osg::BlendFunc* blend = new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
-	ss->setAttributeAndModes(blend, osg::StateAttribute::ON);
+	//ss->setAttributeAndModes(blend, osg::StateAttribute::ON);
 
 	osg::ColorMask* colorMask = new osg::ColorMask(false, false, false, false);
-	//ss->setAttributeAndModes(colorMask, osg::StateAttribute::ON);
+	ss->setAttributeAndModes(colorMask, osg::StateAttribute::ON);
+
+	//让面远离视角
+	osg::PolygonOffset* offset = new osg::PolygonOffset(1, 1);
+	ss->setAttributeAndModes(offset, osg::StateAttribute::ON);
 
 	return geom;
 }
 
-//https://blog.csdn.net/qq_16123279/article/details/82463266
 osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const std::vector<osg::Vec4>& colors,
 	const std::vector<int>& ids, osg::Camera* camera, osg::PrimitiveSet::Mode mode /*= osg::PrimitiveSet::LINE_LOOP*/)
 {
@@ -397,6 +380,101 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 	return pGeometry.release();
 }
 
+#define SCENE1
+
+#ifdef  SCENE1
+//虚线 区分内外
+osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
+{	
+	osg::ref_ptr<osg::Group> root = new osg::Group;
+	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+	g_hidden_line_geode = new osg::Geode;
+	root->addChild(geode);
+	root->addChild(g_hidden_line_geode);
+	vector<osg::Vec3>		 PTs, COLORs;
+
+	setUpStateset(geode->getOrCreateStateSet(), view.getCamera());
+	setUpHiddenLineStateset(g_hidden_line_geode->getOrCreateStateSet(), view.getCamera());
+
+	float z;
+	//-------------------------------------------------
+	osg::Geode* geode2 = new osg::Geode;
+	{
+		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1.5, -1.5, -0.5), osg::Vec3(3, 0, 0), osg::Vec3(0, 3, 0));
+		geode2->addChild(geom);
+		root->addChild(geode2);
+
+		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
+		osg::StateSet* ss = geom->getOrCreateStateSet();
+		ss->setRenderBinDetails(1, "RenderBin"); //面
+
+		PTs.clear();
+		z = -0.5;
+		PTs.push_back(osg::Vec3(-1.5, -1.5, z));
+		PTs.push_back(osg::Vec3(1.5, -1.5, z));
+		PTs.push_back(osg::Vec3(1.5, 1.5, z));
+		PTs.push_back(osg::Vec3(-1.5, 1.5, z));
+		
+		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 3 }, view.getCamera());
+		g_hidden_line_geode->addDrawable(n4);
+		ss = n4->getOrCreateStateSet();
+		ss->setRenderBinDetails(20, "RenderBin"); //虚线
+		
+		n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
+		n4->setName("LINE4");
+		geode->addDrawable(n4);
+		ss = n4->getOrCreateStateSet();
+		ss->setRenderBinDetails(3, "RenderBin"); //实线
+	}
+
+	   	
+	//-------------------------------------------------
+	geode2 = new osg::Geode;
+	{
+		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1, -1, 0), osg::Vec3(2.5, 0, 0), osg::Vec3(0, 2.5, 0));
+		geode2->addChild(geom);
+		root->addChild(geode2);
+		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
+		osg::StateSet* ss = geom->getOrCreateStateSet();
+		ss->setRenderBinDetails(1, "RenderBin"); //面
+
+		PTs.clear();
+		z = 0;
+		PTs.push_back(osg::Vec3(-1, -1, z));
+		PTs.push_back(osg::Vec3(1.5, -1, z));
+		PTs.push_back(osg::Vec3(1.5, 1.5, z));
+		PTs.push_back(osg::Vec3(-1, 1.5, z));
+
+		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 2 }, view.getCamera());
+		g_hidden_line_geode->addDrawable(n5);
+		ss = n5->getOrCreateStateSet();
+		ss->setRenderBinDetails(20, "RenderBin"); //虚线
+
+		n5 = createLine2(PTs, { osg::Vec4(1, 1, 1, 1) }, { 2 }, view.getCamera());
+		n5->setName("LINE5");
+		geode->addDrawable(n5);
+			   
+		ss = n5->getOrCreateStateSet();
+		ss->setRenderBinDetails(3, "RenderBin"); //实线
+	}
+
+	vector<int> index1(100);
+	vector<int> index2(100);
+	g_textureBuffer1 = create_tbo(index1);
+	g_textureBuffer2 = create_tbo(index2);
+
+	osg::ComputeBoundsVisitor cbbv;
+	root->accept(cbbv);
+	g_line_bbox = cbbv.getBoundingBox();
+
+	return root.release();
+}
+
+#endif
+
+#if 0
+
+
 osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 {
 	std::default_random_engine eng(time(NULL));
@@ -437,37 +515,54 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 	//n2->setName("LINE3");
 	//geode->addDrawable(n2);
 
-	PTs.clear();
-	z = -0.5;
-	PTs.push_back(osg::Vec3(-1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, 1.5, z));
-	PTs.push_back(osg::Vec3(-1.5, 1.5, z));
-
-	osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
-	n4->setName("LINE4");
-	geode->addDrawable(n4);
-	g_hidden_line_geode->addDrawable(n4);
-
+	//-------------------------------------------------
 	osg::Geode* geode2 = new osg::Geode;
-	osg::Geometry* geom = myCreateTexturedQuadGeometry2(view.getCamera(), 999, osg::Vec3(-1, -1, 0), osg::Vec3(2.5, 0, 0), osg::Vec3(0, 2.5, 0));
-	geode2->addChild(geom);
-	root->addChild(geode2);
+	{
+		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1.5, -1.5, -0.5), osg::Vec3(3, 0, 0), osg::Vec3(0, 3, 0));
+		geode2->addChild(geom);
+		root->addChild(geode2);
 
-	PTs.clear();
-	z = 0;
-	PTs.push_back(osg::Vec3(-1, -1, z));
-	PTs.push_back(osg::Vec3(1.5, -1, z));
-	PTs.push_back(osg::Vec3(1.5, 1.5, z));
-	PTs.push_back(osg::Vec3(-1, 1.5, z));
-	osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { 888 }, view.getCamera());
-	n5->setName("LINE5");
-	geode->addDrawable(n5);
-	//g_hidden_line_geode->addDrawable(n5);
+		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
+		osg::StateSet* ss = geom->getOrCreateStateSet();
+		ss->setRenderBinDetails(-100, "RenderBin"); //面
 
-	//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-	osg::StateSet* ss = geom->getOrCreateStateSet();
-	ss->setRenderBinDetails(-100, "RenderBin"); //面
+		PTs.clear();
+		z = -0.5;
+		PTs.push_back(osg::Vec3(-1.5, -1.5, z));
+		PTs.push_back(osg::Vec3(1.5, -1.5, z));
+		PTs.push_back(osg::Vec3(1.5, 1.5, z));
+		PTs.push_back(osg::Vec3(-1.5, 1.5, z));
+
+		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
+		n4->setName("LINE4");
+		geode->addDrawable(n4);
+		g_hidden_line_geode->addDrawable(n4);
+	}
+
+
+	//-------------------------------------------------
+	geode2 = new osg::Geode;
+	{
+		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1, -1, 0), osg::Vec3(2.5, 0, 0), osg::Vec3(0, 2.5, 0));
+		geode2->addChild(geom);
+		root->addChild(geode2);
+
+		PTs.clear();
+		z = 0;
+		PTs.push_back(osg::Vec3(-1, -1, z));
+		PTs.push_back(osg::Vec3(1.5, -1, z));
+		PTs.push_back(osg::Vec3(1.5, 1.5, z));
+		PTs.push_back(osg::Vec3(-1, 1.5, z));
+		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { 888 }, view.getCamera());
+		n5->setName("LINE5");
+		geode->addDrawable(n5);
+		g_hidden_line_geode->addDrawable(n5);
+
+		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
+		osg::StateSet* ss = geom->getOrCreateStateSet();
+		ss->setRenderBinDetails(-100, "RenderBin"); //面
+	}
+
 
 #if 0
 	vector<int> index1(100);
@@ -523,3 +618,5 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 
 	return root.release();
 }
+
+#endif

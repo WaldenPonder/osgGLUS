@@ -29,10 +29,10 @@ float unpackRgbaToFloat(vec4 _rgba)
 void main()
 {
  // if(u_is_hidden_line)
-		FragColor = vec4(1, 1, 1, 1);
+		
    //else 
 	//	FragColor = g_color;
-	
+   FragColor = vec4(0.2, 0.4, 0.6, 0.8);
    idTexture = g_id;
    depthTexture =   packFloatToRgba(gl_FragCoord.z);
    linePtTexture = v_linePt;

@@ -22,7 +22,7 @@ vec4 packFloatToRgba(float _value)
 void main()
 {
 	//idTexture = v_id;
-	depthTexture = packFloatToRgba(gl_FragCoord.z);
-	FragColor = v_color;
-	FragColor.a = 0;
+	//depthTexture = packFloatToRgba(gl_FragCoord.z);
+	//FragColor = v_color;
+	//FragColor.a = 0;
 }

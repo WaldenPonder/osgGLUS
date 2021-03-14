@@ -124,7 +124,7 @@ float unpackRgbaToFloat(vec4 _rgba)
 
 bool is_hidden_line(vec4 color)
 {
-	return is_equal(color, vec4(1,1,1,1));
+	return is_equal(color, vec4(0.2, 0.4, 0.6, 0.8));
 }
 
 bool is_out_the_face(const int id, vec2 uv, const vec2 text_size)
@@ -165,10 +165,10 @@ void main()
 	const vec4 baseColor = texture(baseTexture, texcoord);
 	int id = to_int(texture(idTexture, texcoord).r);
 	int range = 10;
-
-	if(id == 999)
+	
+	if(is_hidden_line(baseColor))
 	{
-		//fragColor = vec4(1, 0, 1, 1); return;
+	//	fragColor = vec4(1, 1, 0, 1); return;
 	}
 
 	// vec2 text_size2 = textureSize(depthTexture, 0);
@@ -180,7 +180,7 @@ void main()
 	//fragColor = pt; return;
 
 	if(id != 0)
-		//if(false)
+	//	if(false)
 	{
 		vec2 text_size = textureSize(depthTexture, 0);
 		float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
@@ -230,7 +230,7 @@ void main()
 							bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
 							if(b1)
 							{
-								fragColor =  vec4(0,1,1,1);
+								fragColor =  vec4(1,0,1,1);
 								return;
 							}
 						}

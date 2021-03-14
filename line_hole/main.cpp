@@ -17,7 +17,7 @@ osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
 
 osg::Group* g_root;
 osg::BoundingBox g_line_bbox;
-osg::Vec4 CLEAR_COLOR(0, 0, 0, 1);// (204 / 255, 213 / 255, 240 / 255, 1);
+osg::Vec4 CLEAR_COLOR(0, 0, 0, 1);
 
 osg::Geode* g_hidden_line_geode;
 
@@ -46,7 +46,7 @@ int main()
 {
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
-	g_hidden_line_geode = new osg::Geode;
+	
 	g_root = root;
 	view.setSceneData(root);
 
@@ -55,9 +55,6 @@ int main()
 	std::vector<osg::Texture2D*> textures = LineHole::createRttCamera(&view);
 	osg::Camera* hud_camera = LineHole::createHudCamera(&view, textures);
 	root->addChild(hud_camera);
-
-	auto* ss = g_hidden_line_geode->getOrCreateStateSet();
-	LineHole::setUpHiddenLineStateset(ss, view.getCamera());
 
 	//没什么意义，不会显示，只是为了鼠标操作方便
 	{
