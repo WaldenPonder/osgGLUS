@@ -3,13 +3,13 @@ layout (lines) in;
 layout (line_strip, max_vertices = 2) out;
 
 in VS_OUT {
-    flat uint v_id;
+    flat int v_id;
     vec4 v_color;
 } gs_in[];
 
 
 out vec4 g_color;
-flat out uint g_id;
+flat out int g_id;
 flat out vec4 v_linePt;
 
 void main() 

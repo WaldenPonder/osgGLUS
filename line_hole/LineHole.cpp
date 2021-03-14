@@ -17,9 +17,9 @@ std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer
 	auto create_id_texture = [&]() {
 		osg::Texture2D* texture2d = new osg::Texture2D;
 		texture2d->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
-		texture2d->setInternalFormat(GL_R32UI);
-		texture2d->setSourceFormat(GL_R32UI);
-		texture2d->setSourceType(GL_UNSIGNED_INT);
+		texture2d->setInternalFormat(GL_R32I);
+		texture2d->setSourceFormat(GL_R32I);
+		texture2d->setSourceType(GL_INT);
 		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
 		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
 		return texture2d;
@@ -331,7 +331,7 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 
 	//传递给shader
 	osg::ref_ptr<osg::Vec4Array> a_color = new osg::Vec4Array;
-	osg::ref_ptr<osg::UIntArray> a_id = new osg::UIntArray;
+	osg::ref_ptr<osg::Vec4Array> a_id = new osg::Vec4Array;
 
 	int nCount = allPTs.size();
 
@@ -356,10 +356,7 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 		else
 			a_color->push_back(colors.back());
 
-		if (i < ids.size())
-			a_id->push_back(ids[i]);
-		else
-			a_id->push_back(ids.back());
+		a_id->push_back(osg::Vec4(ids[0], ids[0], ids[0], ids[0]));
 	}
 
 	indices->setElementBufferObject(ebo);
@@ -415,12 +412,12 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 		PTs.push_back(osg::Vec3(1.5, 1.5, z));
 		PTs.push_back(osg::Vec3(-1.5, 1.5, z));
 		
-		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 3 }, view.getCamera());
+		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 1 }, view.getCamera());
 		g_hidden_line_geode->addDrawable(n4);
 		ss = n4->getOrCreateStateSet();
 		ss->setRenderBinDetails(20, "RenderBin"); //虚线
 		
-		n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
+		n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 1 }, view.getCamera());
 		n4->setName("LINE4");
 		geode->addDrawable(n4);
 		ss = n4->getOrCreateStateSet();
@@ -445,7 +442,7 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 		PTs.push_back(osg::Vec3(1.5, 1.5, z));
 		PTs.push_back(osg::Vec3(-1, 1.5, z));
 
-		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 2 }, view.getCamera());
+		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(1, 1, 1, 1) }, { 2 }, view.getCamera());
 		g_hidden_line_geode->addDrawable(n5);
 		ss = n5->getOrCreateStateSet();
 		ss->setRenderBinDetails(20, "RenderBin"); //虚线

@@ -1,14 +1,13 @@
 #version 430  compatibility
 
-flat in uint g_id;
+flat in int g_id;
 flat in vec4 v_linePt;
 in vec4 g_color;
 
 layout(location = 0) out vec4 FragColor;
-layout(location = 1) out uint idTexture;
+layout(location = 1) out int idTexture;
 layout(location = 2) out vec4 depthTexture;
 layout(location = 3) out vec4 linePtTexture;
-uniform bool u_is_hidden_line;
 
 //bgfx shaderlib.sh
 vec4 packFloatToRgba(float _value)
@@ -28,11 +27,11 @@ float unpackRgbaToFloat(vec4 _rgba)
 
 void main()
 {
-	//if(u_is_hidden_line)
-//		FragColor = vec4(1, 1, 1, 1);
-//  else
 	FragColor = g_color;
-
+	
+	//if(g_id == 1)  FragColor = vec4(1,0,0,1);
+	//else if(g_id == 2)  FragColor = vec4(1,1,0,1);
+	  
 	idTexture = g_id;
 	depthTexture =   packFloatToRgba(gl_FragCoord.z);
 	linePtTexture = v_linePt;

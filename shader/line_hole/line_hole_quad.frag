@@ -1,7 +1,7 @@
 #version 430 compatibility
 uniform sampler2D baseTexture;
 uniform sampler2D depthTexture;
-uniform sampler2D idTexture;
+uniform isampler2D idTexture;
 uniform sampler2D linePtTexture;
 uniform isamplerBuffer textureBuffer1;
 uniform isamplerBuffer textureBuffer2;
@@ -163,13 +163,18 @@ bool is_line_face_intersection(vec2 uv, const vec2 text_size)
 void main()
 {
 	const vec4 baseColor = texture(baseTexture, texcoord);
-	int id = to_int(texture(idTexture, texcoord).r);
+	int id = texture(idTexture, texcoord).r;
 	int range = 10;
 	
-	if(is_hidden_line(baseColor))
-	{
-	//	fragColor = vec4(1, 1, 0, 1); return;
-	}
+	// if(id == -1)
+	// {
+		// fragColor = vec4(1, 1, 0, 1); return;
+	// }
+	// else 	if(id == -2)
+	// {
+		// fragColor = vec4(1, 0, 0, 1); return;
+	// }
+	
 
 	// vec2 text_size2 = textureSize(depthTexture, 0);
 	// if(text_size2.x == 1024 && text_size2.y == 1023.9999)
@@ -178,18 +183,17 @@ void main()
 	// }
 	//vec4 pt = abs(texture(linePtTexture, texcoord));
 	//fragColor = pt; return;
-
+#if 1
 	if(id != 0)
-	//	if(false)
 	{
 		vec2 text_size = textureSize(depthTexture, 0);
 		float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
 		int range2 = 25;
 		vec2 delta = vec2(1.0 / text_size.x, 1.0 / text_size.y);
 
-		if(is_hidden_line(baseColor))  //隐藏线打断
+		if(id < 0)  //隐藏线打断
 		{	
-			//id = -id;
+			id = -id;
 			for(int i = -range2; i <= range2; ++i)
 			{
 				for(int j = -range2; j <= range2; ++j)
@@ -197,7 +201,7 @@ void main()
 					vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
 					int id2 = to_int(texture(idTexture, uv).r);
 
-					if(id2 != 0 && id != id2 && !is_connected(id2, id)) //连接判断
+					if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
 					{
 						vec4 p1 = texture(linePtTexture, uv);
 						vec4 p2 = texture(linePtTexture, texcoord);
@@ -219,7 +223,7 @@ void main()
 				{
 					vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
 					int id2 = to_int(texture(idTexture, uv).r);
-					if(id2 != 0 && id != id2 && !is_connected(id2, id)) //连接判断
+					if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
 					{
 						float val = unpackRgbaToFloat(texture(depthTexture, uv));
 						if(val < depth)  //深度比周围大，可能需要打断
@@ -245,7 +249,7 @@ void main()
 	// return;
 
 	//vec4 dp = texture(depthTexture, texcoord);
-
+#endif
 	fragColor = baseColor;
 }
 // 线把面打断的情况--------------------

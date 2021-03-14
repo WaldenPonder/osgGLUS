@@ -1,11 +1,11 @@
 #version 430  compatibility
 
-flat in uint g_id;
+flat in int g_id;
 flat in vec4 v_linePt;
 in vec4 g_color;
 
 layout(location = 0) out vec4 FragColor;
-layout(location = 1) out uint idTexture;
+layout(location = 1) out int idTexture;
 layout(location = 2) out vec4 depthTexture;
 layout(location = 3) out vec4 linePtTexture;
 uniform bool u_is_hidden_line;
@@ -28,12 +28,8 @@ float unpackRgbaToFloat(vec4 _rgba)
 
 void main()
 {
- // if(u_is_hidden_line)
-		
-   //else 
-	//	FragColor = g_color;
-   FragColor = vec4(0.2, 0.4, 0.6, 0.8);
-   idTexture = g_id;
+   FragColor = g_color;
+   idTexture = -g_id;
    depthTexture =   packFloatToRgba(gl_FragCoord.z);
    linePtTexture = v_linePt;
 }
