@@ -377,7 +377,9 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 	return pGeometry.release();
 }
 
-#define SCENE1
+//#define SCENE1
+
+#define SCENE2
 
 #ifdef  SCENE1
 //虚线 区分内外
@@ -469,8 +471,7 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 
 #endif
 
-#if 0
-
+#ifdef SCENE2
 
 osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 {
@@ -489,8 +490,7 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 	PTs.push_back(osg::Vec3(-2, 0, z));
 	osg::Geometry* n = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 1 }, view.getCamera());
 	n->setName("LINE1");
-	//geode->addDrawable(n);
-	//g_hidden_line_geode->addDrawable(n);
+	geode->addDrawable(n);
 
 	PTs.clear();
 	z = 0.35f;
@@ -498,68 +498,28 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 	PTs.push_back(osg::Vec3(0, -2, z));
 	n = createLine2(PTs, { osg::Vec4(1, 1, 0, 1) }, { 4 }, view.getCamera());
 	n->setName("LINE2");
-	//geode->addDrawable(n);
-	//g_hidden_line_geode->addDrawable(n);
+	geode->addDrawable(n);
 
-	//-------------------------------------------------
-	//PTs.clear();
-	//z = 0;
-	//PTs.push_back(osg::Vec3(-1, -1.3, z));
-	//PTs.push_back(osg::Vec3(1, -1, z));
-	//PTs.push_back(osg::Vec3(1, 1, z));
-	//PTs.push_back(osg::Vec3(-1, 1.3, z));
-	//osg::Geometry* n2 = createLine2(PTs, { osg::Vec3(0, 1, 0) }, { 2 }, view.getCamera());
-	//n2->setName("LINE3");
-	//geode->addDrawable(n2);
+	PTs.clear();
+	z = -0.5;
+	PTs.push_back(osg::Vec3(-1.5, -1.5, z));
+	PTs.push_back(osg::Vec3(1.5, -1.5, z));
+	PTs.push_back(osg::Vec3(1.5, 1.5, z));
+	PTs.push_back(osg::Vec3(-1.5, 1.5, z));
 
-	//-------------------------------------------------
-	osg::Geode* geode2 = new osg::Geode;
-	{
-		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1.5, -1.5, -0.5), osg::Vec3(3, 0, 0), osg::Vec3(0, 3, 0));
-		geode2->addChild(geom);
-		root->addChild(geode2);
-
-		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-		osg::StateSet* ss = geom->getOrCreateStateSet();
-		ss->setRenderBinDetails(-100, "RenderBin"); //面
-
-		PTs.clear();
-		z = -0.5;
-		PTs.push_back(osg::Vec3(-1.5, -1.5, z));
-		PTs.push_back(osg::Vec3(1.5, -1.5, z));
-		PTs.push_back(osg::Vec3(1.5, 1.5, z));
-		PTs.push_back(osg::Vec3(-1.5, 1.5, z));
-
-		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
-		n4->setName("LINE4");
-		geode->addDrawable(n4);
-		g_hidden_line_geode->addDrawable(n4);
-	}
-
-
-	//-------------------------------------------------
-	geode2 = new osg::Geode;
-	{
-		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1, -1, 0), osg::Vec3(2.5, 0, 0), osg::Vec3(0, 2.5, 0));
-		geode2->addChild(geom);
-		root->addChild(geode2);
-
-		PTs.clear();
-		z = 0;
-		PTs.push_back(osg::Vec3(-1, -1, z));
-		PTs.push_back(osg::Vec3(1.5, -1, z));
-		PTs.push_back(osg::Vec3(1.5, 1.5, z));
-		PTs.push_back(osg::Vec3(-1, 1.5, z));
-		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { 888 }, view.getCamera());
-		n5->setName("LINE5");
-		geode->addDrawable(n5);
-		g_hidden_line_geode->addDrawable(n5);
-
-		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-		osg::StateSet* ss = geom->getOrCreateStateSet();
-		ss->setRenderBinDetails(-100, "RenderBin"); //面
-	}
-
+	osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
+	n4->setName("LINE4");
+	geode->addDrawable(n4);
+	
+	PTs.clear();
+	z = 0;
+	PTs.push_back(osg::Vec3(-1, -1, z));
+	PTs.push_back(osg::Vec3(1.5, -1, z));
+	PTs.push_back(osg::Vec3(1.5, 1.5, z));
+	PTs.push_back(osg::Vec3(-1, 1.5, z));
+	osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { 888 }, view.getCamera());
+	n5->setName("LINE5");
+	geode->addDrawable(n5);
 
 #if 0
 	vector<int> index1(100);
@@ -604,10 +564,6 @@ osg::Node* LineHole::create_lines(osgViewer::Viewer& view)
 
 	g_textureBuffer1 = create_tbo(index1);
 	g_textureBuffer2 = create_tbo(index2);
-
-	//uniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "u_color");
-	//uniform->set(osg::Vec4(0, 1, 0, 1.));
-	//n2->getOrCreateStateSet()->addUniform(uniform);
 
 	osg::ComputeBoundsVisitor cbbv;
 	geode->accept(cbbv);
