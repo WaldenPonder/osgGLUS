@@ -6,6 +6,9 @@ uniform sampler2D linePtTexture;
 uniform isamplerBuffer textureBuffer1;
 uniform isamplerBuffer textureBuffer2;
 
+uniform float u_out_range;
+uniform float u_inner_range;
+
 in vec2 texcoord;
 out vec4 fragColor;
 
@@ -17,11 +20,6 @@ bool is_equal(in vec4 v1, in vec4 v2)
 		// return true;
 
 	// return false;
-}
-
-int to_int(float f)
-{
-	return int(f);
 }
 
 //与遍历id1 相连接的所以对象，查看id2是否在其中
@@ -61,7 +59,6 @@ bool onSegment(vec2 p, vec2 q, vec2 r)
 	if (q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
 	        q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y))
 		return true;
-
 	return false;
 }
 //https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
@@ -70,8 +67,7 @@ bool onSegment(vec2 p, vec2 q, vec2 r)
 // 0 --> p, q and r are colinear
 // 1 --> Clockwise
 // 2 --> Counterclockwise
-int orientation(vec2 p, vec2 q, vec2 r)
-{
+int orientation(vec2 p, vec2 q, vec2 r){
 	// See https://www.geeksforgeeks.org/orientation-3-ordered-points/
 	// for details of below formula.
 	float val = (q.y - p.y) * (r.x - q.x) -
@@ -122,41 +118,57 @@ float unpackRgbaToFloat(vec4 _rgba)
 	return dot(_rgba, shift);
 }
 
-bool is_hidden_line(vec4 color)
+bool is_need_break(float range, int id, vec2 text_size, float depth)
 {
-	return is_equal(color, vec4(0.2, 0.4, 0.6, 0.8));
-}
-
-bool is_out_the_face(const int id, vec2 uv, const vec2 text_size)
-{
-	int cnt = 0;
-	int cnt2 = 0;
-	for (int i = -1; i <= 1; i++)
+	for(float i = -range; i <= range; i+= 1)
 	{
-		for(int j = -1; j <= 1; j++)
+		for(float j = -range; j <= range; j += 1)
 		{
-			vec2 uv2 = uv + vec2(i / text_size.x, j / text_size.y);
-
+			vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
+			int id2 = texture(idTexture, uv).r;
+			if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
+			{
+				float val = unpackRgbaToFloat(texture(depthTexture, uv));
+				if(val < depth)  //深度比周围大，可能需要打断
+				{
+					vec4 p1 = texture(linePtTexture, texcoord);
+					vec4 p2 = texture(linePtTexture, uv);
+					//线线相交
+					//bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
+					//if(b1)
+					{						
+						return true;
+					}
+				}
+			}
 		}
 	}
-
+	
 	return false;
 }
 
-bool is_line_face_intersection(vec2 uv, const vec2 text_size)
+bool is_need_break_dot_line(float range, int id, vec2 text_size, float depth)
 {
-	int cnt = 0;
-	int cnt2 = 0;
-	for (int i = -1; i <= 1; i++)
+	for(float i = -range; i <= range; i += 1)
 	{
-		for(int j = -1; j <= 1; j++)
+		for(float j = -range; j <= range; j += 1)
 		{
-			vec2 uv2 = uv + vec2(i / text_size.x, j / text_size.y);
-			int id2 = to_int(texture(idTexture, uv2).r);
-			if(id2 == 999) return true;
+			vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
+			int id2 = texture(idTexture, uv).r;
+
+			if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
+			{
+				vec4 p1 = texture(linePtTexture, uv);
+				vec4 p2 = texture(linePtTexture, texcoord);
+				if(!is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0))
+						&& doIntersect(p1.xy, p1.zw, p2.xy, p2.zw))
+				{
+					return true;
+				}
+			}
 		}
 	}
-
+	
 	return false;
 }
 
@@ -164,95 +176,51 @@ void main()
 {
 	const vec4 baseColor = texture(baseTexture, texcoord);
 	int id = texture(idTexture, texcoord).r;
-	int range = 10;
-	
-	// if(id == -1)
-	// {
-		// fragColor = vec4(1, 1, 0, 1); return;
-	// }
-	// else 	if(id == -2)
-	// {
-		// fragColor = vec4(1, 0, 0, 1); return;
-	// }
-	
-
-	// vec2 text_size2 = textureSize(depthTexture, 0);
-	// if(text_size2.x == 1024 && text_size2.y == 1023.9999)
-	// {
-	// fragColor = vec4(1,1,0,1); return;
-	// }
-	//vec4 pt = abs(texture(linePtTexture, texcoord));
-	//fragColor = pt; return;
-#if 1
-	if(id != 0)
+		  
+	if(id == 0)   //id 无效，提前返回
 	{
-		vec2 text_size = textureSize(depthTexture, 0);
-		float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
-		int range2 = 25;
-		vec2 delta = vec2(1.0 / text_size.x, 1.0 / text_size.y);
+		fragColor = baseColor; 
+		return;
+	}
 
-		if(id < 0)  //隐藏线打断
-		{	
-			id = -id;
-			for(int i = -range2; i <= range2; ++i)
+	vec2 text_size = textureSize(depthTexture, 0);
+	float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
+	if(id < 0)  //隐藏线打断
+	{	
+		id = -id;
+		float range = u_inner_range;
+		
+		if(is_need_break_dot_line(range, id, text_size, depth))
+		{
+		   	fragColor =  vec4(0,0,0,1);
+			return;
+		}
+	}
+	else
+	{
+		float range = int(u_out_range);
+		vec4 p1p2 = texture(linePtTexture, texcoord);
+		if(is_equal(p1p2, vec4(0)))
+		{
+			if(is_need_break(range, id, text_size, depth))
 			{
-				for(int j = -range2; j <= range2; ++j)
-				{
-					vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
-					int id2 = to_int(texture(idTexture, uv).r);
-
-					if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
-					{
-						vec4 p1 = texture(linePtTexture, uv);
-						vec4 p2 = texture(linePtTexture, texcoord);
-						if(!is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0))
-						        && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw))
-						{
-							fragColor =  vec4(1,0,0,1);
-							return;
-						}
-					}
-				}
-			}
+				fragColor =  vec4(1,1,1,1);
+				return;
+			}		
 		}
 		else
 		{
-			for(int i = -range; i <= range; ++i)
+			if(is_need_break(range, id, text_size, depth))
 			{
-				for(int j = -range; j <= range; ++j)
-				{
-					vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
-					int id2 = to_int(texture(idTexture, uv).r);
-					if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
-					{
-						float val = unpackRgbaToFloat(texture(depthTexture, uv));
-						if(val < depth)  //深度比周围大，可能需要打断
-						{
-							vec4 p1 = texture(linePtTexture, texcoord);
-							vec4 p2 = texture(linePtTexture, uv);
-							//线线相交
-							bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
-							if(b1)
-							{
-								fragColor =  vec4(1,0,1,1);
-								return;
-							}
-						}
-					}
-				}
-			}
+				fragColor =  vec4(0,0,0,1);
+				return;
+			}		
 		}
 	}
 
-	// vec4 result2 = texture(linePtTexture, texcoord);
-//  fragColor = result2;
-	// return;
-
-	//vec4 dp = texture(depthTexture, texcoord);
-#endif
 	fragColor = baseColor;
 }
-// 线把面打断的情况--------------------
+
 
 
 

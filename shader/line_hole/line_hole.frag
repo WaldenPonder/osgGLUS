@@ -5,7 +5,7 @@ flat in vec4 v_linePt;
 in vec4 g_color;
 
 layout(location = 0) out vec4 FragColor;
-layout(location = 1) out int idTexture;
+layout(location = 1) out int  idTexture;
 layout(location = 2) out vec4 depthTexture;
 layout(location = 3) out vec4 linePtTexture;
 
