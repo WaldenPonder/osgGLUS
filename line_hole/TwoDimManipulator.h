@@ -31,6 +31,8 @@ class TwoDimManipulator : public osgGA::StandardManipulator
 	virtual bool handleMouseWheel(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us) override;
 
 	void focusNode(osg::Node* geo);
+	
+	osg::Camera* getCamera() const;
 
 	osg::Vec3 _center;
 	double	_distance;

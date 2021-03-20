@@ -95,6 +95,9 @@ int setUp(osgViewer::Viewer& view)
 	return 0;
 }
 
+/*
+为什么会消失?
+*/
 int main()
 {
 	//ReadJsonFile::read("F:\\MEP_Json\\piping-model\\model_Piping_fine.json");
@@ -114,6 +117,10 @@ int main()
 
 	osg::Camera* hud_camera = LineHole::createHudCamera(&view, textures);
 	root->addChild(hud_camera);
+
+	//g_rttCamera->addChild(LineHole::create_lines0(view));
+	g_rttCamera->addChild(ReadJsonFile::createScene(g_elementRoot));
+
 	//没什么意义，不会显示，只是为了鼠标操作方便
 	{
 		float s = g_line_bbox.radius();
@@ -125,8 +132,8 @@ int main()
 		//root->addChild(g_mouseBoxPat);
 	}
 
-	//g_rttCamera->addChild(LineHole::create_lines0(view));
-	g_rttCamera->addChild(ReadJsonFile::createScene(g_elementRoot));
+	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
 
 	add_event_handler(view);
 	view.addEventHandler(new MyEventHandler);

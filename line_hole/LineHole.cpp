@@ -54,7 +54,7 @@ std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer
 	g_rttCamera->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
 
 	// set the camera to render before the main camera.
-	g_rttCamera->setRenderOrder(osg::Camera::POST_RENDER);
+	g_rttCamera->setRenderOrder(osg::Camera::PRE_RENDER);
 
 	// tell the camera to use OpenGL frame buffer object where supported.
 	g_rttCamera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
@@ -128,8 +128,8 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer, std::vector<os
 		hud_camera_->addChild(geode_quat);
 		screenQuat->setUseVertexBufferObjects(true);
 		geode_quat->addChild(screenQuat);
-		geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-		geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+		//geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+		//geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
 		screenQuat->setDataVariance(osg::Object::DYNAMIC);
 		screenQuat->setSupportsDisplayList(false);
@@ -225,7 +225,7 @@ osg::Geometry* LineHole::createFinalHudTextureQuad(osg::ref_ptr<osg::Program> pr
 {
 	using namespace osg;
 	Geometry* geom = new Geometry;
-
+	geom->setNodeMask(NM_HUD);
 	Vec3Array* coords = new Vec3Array(4);
 	(*coords)[0] = corner + heightVec;
 	(*coords)[1] = corner;
@@ -345,11 +345,11 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	program->addBindAttribLocation("a_pos", 0);
 
 	osg::Vec4Array* colors = new osg::Vec4Array();
-	osg::ref_ptr<osg::UIntArray> a_id = new osg::UIntArray;
+	osg::ref_ptr<osg::Vec4Array> a_id = new osg::Vec4Array;
 
 	for (int i = 0; i < allPTs.size(); i++)
 	{
-		a_id->push_back(ids.back());
+		a_id->push_back(osg::Vec4(ids.back(), 0, 0, 0));
 		colors->push_back(color.back());
 	}
 
@@ -372,7 +372,7 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	auto ss = geom->getOrCreateStateSet();
 	ss->addUniform(getOrCreateMVPUniform(camera));
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
-
+	ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 	osg::BlendFunc* blend = new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
 	//ss->setAttributeAndModes(blend, osg::StateAttribute::ON);
 
@@ -380,8 +380,8 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	//ss->setAttributeAndModes(colorMask, osg::StateAttribute::ON);
 
 	//ÈÃÃæÔ¶ÀëÊÓ½Ç
-	osg::PolygonOffset* offset = new osg::PolygonOffset(1, 1);
-	ss->setAttributeAndModes(offset, osg::StateAttribute::ON);
+	//osg::PolygonOffset* offset = new osg::PolygonOffset(1, 1);
+	//ss->setAttributeAndModes(offset, osg::StateAttribute::ON);
 
 	return geom;
 }

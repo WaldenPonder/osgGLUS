@@ -85,9 +85,9 @@ void ReadJsonFile::read(const std::string& fileName)
 	reader.parse(in, root);
 	g_elementRoot.DetailLevel = root["DetailLevel"].asString();
 
-	int size = root["MEPElements"].size();
+	int size = 115;// root["MEPElements"].size();
 	cout << size << "  :  MEPElements.size() \n";
-	int delta = size / 100;
+	int delta = max(size / 100, 1);
 	for (int i = 0; i < size; i++)
 	{
 		if(i % delta == 0)

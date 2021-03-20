@@ -94,9 +94,9 @@ public:
 			rttCamera->setProjectionMatrix(mainCamera->getProjectionMatrix());
 			rttCamera->setViewMatrix(mainCamera->getViewMatrix());
 
-			//osg::ref_ptr<osg::RefMatrix> proMat = new osg::RefMatrix(rttCamera->getProjectionMatrix());
-			//renderInfo.getState()->applyProjectionMatrix(proMat);
-			//renderInfo.getState()->applyModelViewMatrix(rttCamera->getViewMatrix());
+			osg::ref_ptr<osg::RefMatrix> proMat = new osg::RefMatrix(rttCamera->getProjectionMatrix());
+			renderInfo.getState()->applyProjectionMatrix(proMat);
+			renderInfo.getState()->applyModelViewMatrix(rttCamera->getViewMatrix());
 		}
 	}
 };
@@ -145,7 +145,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 50) range = 50;
+		if (range > 15) range = 15;
 		uniform->set(range);
 	}
 
@@ -176,7 +176,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 50) range = 50;
+		if (range > 15) range = 15;
 		uniform->set(range);
 	}
 

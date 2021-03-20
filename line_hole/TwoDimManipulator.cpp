@@ -63,9 +63,9 @@ osg::Matrixd TwoDimManipulator::getInverseMatrix() const
 	matrix.makeTranslate(0.0f, 0.0f, -_distance);
 	matrix.preMultTranslate(-_center);
 
-	float w = _viewer->getCamera()->getViewport()->width() * _distance;
-	float h = _viewer->getCamera()->getViewport()->height() * _distance;
-	_viewer->getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, -10.0f, 10000.0f);
+	float w = getCamera()->getViewport()->width() * _distance;
+	float h = getCamera()->getViewport()->height() * _distance;
+	getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, -1e2, 1e4);
 
 	return matrix;
 }
@@ -112,10 +112,10 @@ bool TwoDimManipulator::handleMouseDrag(const osgGA::GUIEventAdapter& ea, osgGA:
 	{
 		osg::Vec2 deltaPt = osg::Vec2(ea.getX(), ea.getY()) - _preMousePt;
 
-		float w = _viewer->getCamera()->getViewport()->width();
-		float h = _viewer->getCamera()->getViewport()->height();
+		float w = getCamera()->getViewport()->width();
+		float h = getCamera()->getViewport()->height();
 
-		double screenWidthInWorld = util::screenWidthInWorld(_viewer->getCamera());
+		double screenWidthInWorld = util::screenWidthInWorld(getCamera());
 		_center -= osg::Vec3(deltaPt[0] / w * screenWidthInWorld, deltaPt[1] / h * (screenWidthInWorld * (h / w)), 0);
 
 		_preMousePt = osg::Vec2(ea.getX(), ea.getY());
@@ -167,14 +167,15 @@ void TwoDimManipulator::focusNode(osg::Node* geo)
 	boundingSphere.expandBy(bb);
 	_center.set(boundingSphere.center());
 
-	double viewPortW = _viewer->getCamera()->getViewport()->width();
-	double viewPortH = _viewer->getCamera()->getViewport()->height();
+	double viewPortW = getCamera()->getViewport()->width();
+	double viewPortH = getCamera()->getViewport()->height();
 
 	_distance = (1.8f * boundingSphere.radius()) / min(viewPortW, viewPortH);
 	if (_distance <= 0)
 		_distance = 0.001;
+}
 
-	//float w = viewPortW * _distance;
-	//float h = viewPortH * _distance;
-	//_viewer->getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, -1000.0f, 1000.0f);
+osg::Camera* TwoDimManipulator::getCamera() const
+{
+	return _viewer->getCamera();
 }
