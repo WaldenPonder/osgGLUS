@@ -100,8 +100,8 @@ int main()
 {
 	//ReadJsonFile::read("F:\\MEP_Json\\piping-model\\model_Piping_fine.json");
 	//ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_Coarse.json");
-	ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_fine.json");
-	//ReadJsonFile::read("F:\\MEP_Json\\HVAC-model\\model_HVAC_fine.json");
+	//ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_fine.json");
+	ReadJsonFile::read("F:\\MEP_Json\\HVAC-model\\model_HVAC_fine.json");
 
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
