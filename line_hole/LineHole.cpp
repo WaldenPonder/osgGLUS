@@ -372,7 +372,7 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	auto ss = geom->getOrCreateStateSet();
 	ss->addUniform(getOrCreateMVPUniform(camera));
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
-	ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+	//ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 	osg::BlendFunc* blend = new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
 	//ss->setAttributeAndModes(blend, osg::StateAttribute::ON);
 

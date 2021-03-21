@@ -70,14 +70,16 @@ bool onSegment(vec2 p, vec2 q, vec2 r)
 int orientation(vec2 p, vec2 q, vec2 r){
 	// See https://www.geeksforgeeks.org/orientation-3-ordered-points/
 	// for details of below formula.
-	float val = (q.y - p.y) * (r.x - q.x) -
-	            (q.x - p.x) * (r.y - q.y);
+	float val1 = (q.y - p.y) * (r.x - q.x);
+	
+	float val2 = (q.x - p.x) * (r.y - q.y);
 
-	if (abs(val) < 0.00001) return 0;  // colinear
+	if (all(equal(vec2(val1 - val2, val2 - val1), vec2(0))))
+		return 0;  // colinear
 
 	// if(val == 0) return 0;
 
-	return (val > 0)? 1: 2; // clock or counterclock wise
+	return (val1 - val2 > 0)? 1: 2; // clock or counterclock wise
 }
 
 // The main function that returns true if line segment 'p1q1'
@@ -94,7 +96,7 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 	// General case
 	if (o1 != o2 && o3 != o4)
 		return true;
-
+#if 0
 	// Special Cases
 	// p1, q1 and p2 are colinear and p2 lies on segment p1q1
 	if (o1 == 0 && onSegment(p1, p2, q1)) return true;
@@ -107,6 +109,7 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 
 	// p2, q2 and q1 are colinear and q1 lies on segment p2q2
 	if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+#endif
 
 	return false; // Doesn't fall in any of the above cases
 }
@@ -179,7 +182,8 @@ void main()
 		  
 	if(id == 0)   //id 无效，提前返回
 	{
-		fragColor = vec4(1,1,0,1);; 
+		fragColor = baseColor; 
+		//fragColor = vec4(1,1,0,1);
 		return;
 	}
 	

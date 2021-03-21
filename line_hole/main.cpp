@@ -94,15 +94,14 @@ int setUp(osgViewer::Viewer& view)
 	cam->setViewport(new osg::Viewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2));
 	return 0;
 }
-
-/*
-为什么会消失?
-*/
+//不交叉不打断
+//线段在窗口外，方向如何保证正确
 int main()
 {
 	//ReadJsonFile::read("F:\\MEP_Json\\piping-model\\model_Piping_fine.json");
 	//ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_Coarse.json");
 	ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_fine.json");
+	//ReadJsonFile::read("F:\\MEP_Json\\HVAC-model\\model_HVAC_fine.json");
 
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
@@ -129,11 +128,11 @@ int main()
 		g_mouseBoxPat->setScale(osg::Vec3(s, s, s));
 		g_mouseBoxPat->addChild(osgDB::readNodeFile(shader_dir() + "/model/cube.obj"));
 		g_mouseBoxPat->setNodeMask(1);
-		//root->addChild(g_mouseBoxPat);
+		root->addChild(g_mouseBoxPat);
 	}
 
-	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
+	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 
 	add_event_handler(view);
 	view.addEventHandler(new MyEventHandler);

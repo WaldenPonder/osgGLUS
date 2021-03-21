@@ -144,8 +144,8 @@ public:
 		osg::Vec3d p2(sz, 0, 1);
 
 		float range = (p1 * mvp - p2 * mvp).length();
-		//std::cout << range << "\n";
-		if (range > 15) range = 15;
+		std::cout << range << "\n";
+		if (range > 50) range = 50;
 		uniform->set(range);
 	}
 
@@ -176,7 +176,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 15) range = 15;
+		if (range > 50) range = 50;
 		uniform->set(range);
 	}
 

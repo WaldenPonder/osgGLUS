@@ -85,7 +85,7 @@ void ReadJsonFile::read(const std::string& fileName)
 	reader.parse(in, root);
 	g_elementRoot.DetailLevel = root["DetailLevel"].asString();
 
-	int size = 115;// root["MEPElements"].size();
+	int size = root["MEPElements"].size();
 	cout << size << "  :  MEPElements.size() \n";
 	int delta = max(size / 100, 1);
 	for (int i = 0; i < size; i++)
@@ -181,7 +181,7 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			allPTs.push_back(triangle.ThirdPoint);
 		}
 
-		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera());
+		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(54. / 255., 78./255., 111./255.0, 1) }, { id }, g_viewer->getCamera());
 		osg::Geode* geode = new osg::Geode;
 		geode->addDrawable(geometry);
 		root->addChild(geode);

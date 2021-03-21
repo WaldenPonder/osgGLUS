@@ -24,6 +24,8 @@ void main()
 	idTexture = v_id;
 	depthTexture = packFloatToRgba(gl_FragCoord.z);
 	FragColor = v_color;
+	linePtTexture = vec4(0);
+	
 	//FragColor.a = 0;
 	//FragColor = vec4(1,1,0,1);
 }

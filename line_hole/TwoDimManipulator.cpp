@@ -65,8 +65,7 @@ osg::Matrixd TwoDimManipulator::getInverseMatrix() const
 
 	float w = getCamera()->getViewport()->width() * _distance;
 	float h = getCamera()->getViewport()->height() * _distance;
-	getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, -1e2, 1e4);
-
+	getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, 0, 1e5);
 	return matrix;
 }
 
@@ -130,9 +129,6 @@ bool TwoDimManipulator::handleMouseWheel(const osgGA::GUIEventAdapter& ea, osgGA
 	const float factor = 0.1;
 
 	bool bHandle = false;
-
-	//_center.z() = 10;
-
 	if (ea.getEventType() == osgGA::GUIEventAdapter::SCROLL)
 	{
 		osg::Vec3 mousePt = util::screenToWorld(_viewer->getCamera(), osg::Vec3(ea.getX(), ea.getY(), 0));
@@ -151,7 +147,7 @@ bool TwoDimManipulator::handleMouseWheel(const osgGA::GUIEventAdapter& ea, osgGA
 			bHandle = true;
 		}
 	}
-	return __super::handleMouseWheel(ea, us);
+	return false;
 }
 
 void TwoDimManipulator::focusNode(osg::Node* geo)
@@ -166,6 +162,7 @@ void TwoDimManipulator::focusNode(osg::Node* geo)
 	osg::BoundingBox& bb = cbVisitor.getBoundingBox();
 	boundingSphere.expandBy(bb);
 	_center.set(boundingSphere.center());
+	_center += osg::Z_AXIS * boundingSphere.radius();
 
 	double viewPortW = getCamera()->getViewport()->width();
 	double viewPortH = getCamera()->getViewport()->height();
