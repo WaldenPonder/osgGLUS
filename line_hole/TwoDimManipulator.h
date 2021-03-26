@@ -2,8 +2,6 @@
 #include <osgGA/StandardManipulator>
 #include <osgViewer/Viewer>
 
-extern osg::Camera* g_rttCamera;
-
 class TwoDimManipulator : public osgGA::StandardManipulator
 {
  public:

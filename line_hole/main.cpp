@@ -6,27 +6,31 @@
 #include "ReadJsonFile.h"
 #include "TwoDimManipulator.h"
 #include <unordered_map>
+#include <assert.h>
+#include "ConvexHullVisitor.h"
 
-osg::Texture2D* g_texture;
-osg::Texture2D* g_depthTexture;
-osg::Texture2D* g_idTexture;
-osg::Texture2D* g_linePtTexture;
+RenderPass g_linePass;
+RenderPass g_facePass;
+
 osgViewer::Viewer* g_viewer;
-osg::ref_ptr <osg::Node> g_sceneNode;
-osg::Camera* g_rttCamera = nullptr;
+osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer1;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
-bool g_is_orth_camera = false;
 
-#define TEXTURE_SIZE1 1024
-#define TEXTURE_SIZE2 1024
+bool g_is_orth_camera = false;
+bool g_line_hole_enable = true;
+
+int TEXTURE_SIZE1;
+int TEXTURE_SIZE2;
 
 osg::Group* g_root;
 osg::BoundingBox g_line_bbox;
-osg::Vec4 CLEAR_COLOR(0, 0, 0, 1);
+osg::Vec4 CLEAR_COLOR(0, 0, 0, 0);
 
 osg::Geode* g_hidden_line_geode;
 osg::PositionAttitudeTransform* g_mouseBoxPat = nullptr;
+
+bool g_is_top_view = true;
 
 //切换场景
 class MyEventHandler : public osgGA::GUIEventHandler
@@ -35,38 +39,53 @@ public:
 	bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 	{
 		osgViewer::Viewer* viewer = dynamic_cast<osgViewer::Viewer*>(&aa);
-		if (!viewer || !g_rttCamera) return false;
+		if (!viewer || !g_sceneNode) return false;
 
 		if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
 		{
-			if (ea.getKey() == 'c')
-			{
-				g_rttCamera->removeChildren(0, g_rttCamera->getNumChildren());
-
-				static int index = 1;
-				
-				if (index % 3 == 0)
-					g_rttCamera->addChild(LineHole::create_lines0(*viewer));
-				else if (index % 3 == 1)
-					g_rttCamera->addChild(LineHole::create_lines1(*viewer));
-				else if (index % 3 == 2)
-					g_rttCamera->addChild(LineHole::create_lines2(*viewer));
-
-				index++;
-
-				if (g_mouseBoxPat)
-				{
-					g_mouseBoxPat->setPosition(g_line_bbox.center());
-					osg::BoundingSphere bs(g_line_bbox);
-					float r = bs.radius();
-					g_mouseBoxPat->setScale(osg::Vec3(r, r, r));
-				}
-			}
-			else if (ea.getKey() == 'a')
+			if (ea.getKey() == 'a')
 			{
 				g_is_orth_camera = true;
 				auto mani = new TwoDimManipulator(g_viewer);
 				g_viewer->setCameraManipulator(mani);
+			}
+			else if(ea.getKey() == 'b')
+			{
+				g_is_top_view = !g_is_top_view;
+				g_viewer->getCameraManipulator()->home(0);
+			}
+			else if(ea.getKey() == 'c')
+			{
+				g_viewer->getCameraManipulator()->home(0);
+				g_viewer->getCameraManipulator()->home(ea, aa);
+			}
+			else if(ea.getKey() == 'd')
+			{
+				osg::Camera* camera = g_linePass.rttCamera;				
+				if(camera->getCullMask() & NM_HIDDEN_LINE)
+					camera->setCullMask(camera->getCullMask() & ~NM_HIDDEN_LINE);
+				else 
+					camera->setCullMask(camera->getCullMask() | NM_HIDDEN_LINE);
+			}
+			else if(ea.getKey() == 'e')
+			{
+				g_line_hole_enable = !g_line_hole_enable;
+			}
+			else if(ea.getKey() == 'h')
+			{
+				ConvexHullVisitor chv;
+				chv.setTraversalMask(NM_FACE);
+				g_sceneNode->accept(chv);
+
+				g_sceneNode->addChild(g_convexRoot);
+
+				for (int i = 0; i < g_convexRoot->getNumChildren(); i++)
+				{
+					g_sceneNode->addChild(g_convexRoot->getChild(i));
+				}
+
+				g_convexRoot->removeChildren(0, g_convexRoot->getNumChildren());
+				g_convexRoot.release();
 			}
 		}
 
@@ -94,14 +113,40 @@ int setUp(osgViewer::Viewer& view)
 	cam->setViewport(new osg::Viewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2));
 	return 0;
 }
-//不交叉不打断
-//线段在窗口外，方向如何保证正确
+
+void ReadFile()
+{
+	TEXTURE_SIZE1 = TEXTURE_SIZE2 = 1024;
+	std::string file_name = "F:\\MEP_Json\\机电遮挡.json";
+
+	bool bReadFileSuccess = true;
+	do
+	{
+		ifstream IF(shader_dir() + "/line_hole/config.ini");
+
+		if (!IF.is_open())
+		{
+			bReadFileSuccess = false;
+			break;
+		}
+
+		string buf;
+		getline(IF, buf);
+		if (buf != "FILE_PATH:")
+			bReadFileSuccess = false;
+		getline(IF, buf);
+		file_name = buf;
+	} while (0);
+
+	if (!bReadFileSuccess)
+		cout << "读取配置文件失败" << endl;
+
+	ReadJsonFile::read(file_name);
+}
+
 int main()
 {
-	//ReadJsonFile::read("F:\\MEP_Json\\piping-model\\model_Piping_fine.json");
-	//ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_Coarse.json");
-	//ReadJsonFile::read("F:\\MEP_Json\\electrical-model\\model_Electrical_fine.json");
-	ReadJsonFile::read("F:\\MEP_Json\\HVAC-model\\model_HVAC_fine.json");
+	ReadFile();
 
 	osgViewer::Viewer view;
 	osg::Group* root = new osg::Group;
@@ -112,13 +157,20 @@ int main()
 	
 	setUp(view);
 
-	std::vector<osg::Texture2D*> textures = LineHole::createRttCamera(&view);
+	g_linePass.rttCamera = LineHole::createLineRttCamera(&view);
+	g_facePass.rttCamera = LineHole::createFaceRttCamera(&view);
 
-	osg::Camera* hud_camera = LineHole::createHudCamera(&view, textures);
+	g_root->addChild(g_facePass.rttCamera);
+	g_root->addChild(g_linePass.rttCamera);
+	
+
+	osg::Camera* hud_camera = LineHole::createHudCamera(&view);
 	root->addChild(hud_camera);
 
-	//g_rttCamera->addChild(LineHole::create_lines0(view));
-	g_rttCamera->addChild(ReadJsonFile::createScene(g_elementRoot));
+	g_sceneNode = ReadJsonFile::createScene(g_elementRoot);
+
+	g_linePass.rttCamera->addChild(g_sceneNode);
+	g_facePass.rttCamera->addChild(g_sceneNode);
 
 	//没什么意义，不会显示，只是为了鼠标操作方便
 	{
@@ -127,16 +179,26 @@ int main()
 		g_mouseBoxPat->setPosition(g_line_bbox.center());
 		g_mouseBoxPat->setScale(osg::Vec3(s, s, s));
 		g_mouseBoxPat->addChild(osgDB::readNodeFile(shader_dir() + "/model/cube.obj"));
-		g_mouseBoxPat->setNodeMask(1);
+		//g_mouseBoxPat->setNodeMask(NM_HIDE_OBJECT);
+		//g_mouseBoxPat->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+		g_mouseBoxPat->getOrCreateStateSet()->setAttributeAndModes(new osg::ColorMask(false, false, false, false));
 		root->addChild(g_mouseBoxPat);
 	}
-
+		
+	//view.getCamera()->setCullMask(~NM_HIDE_OBJECT);
 	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 
 	add_event_handler(view);
 	view.addEventHandler(new MyEventHandler);
 	//osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
+
+	// add the state manipulator
+	if(g_facePass.rttCamera)
+		view.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
+
+	if (g_linePass.rttCamera)
+		view.addEventHandler(new osgGA::StateSetManipulator(g_linePass.rttCamera->getOrCreateStateSet()));
 
 	return view.run();
 }

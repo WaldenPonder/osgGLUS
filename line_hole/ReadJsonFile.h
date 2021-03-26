@@ -34,11 +34,11 @@ struct Geometrys
 struct MEPElement
 {
 	osg::Vec3 Color;
-	string ConnectedElementId;
+	vector<uint64_t> ConnectedElementId;
 	string GUID;
 	Geometrys Geometry;
 	bool HasGeometry;
-	string Id;
+	uint64_t Id;
 	string Name;
 };
 
@@ -53,6 +53,7 @@ extern ElementGroup g_elementRoot;
 namespace osg
 {
 	class Node;
+	class MatrixTransform;
 };
 
 class ReadJsonFile
@@ -60,6 +61,6 @@ class ReadJsonFile
 public:
 	static void read(const std::string& fileName);
 
-	static osg::Node* createScene(const ElementGroup& root);
+	static osg::MatrixTransform* createScene(ElementGroup& root);
 };
 

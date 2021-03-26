@@ -8,6 +8,7 @@ layout(location = 0) out vec4 FragColor;
 layout(location = 1) out int  idTexture;
 layout(location = 2) out vec4 depthTexture;
 layout(location = 3) out vec4 linePtTexture;
+uniform sampler2D depthTextureSampler;
 
 //bgfx shaderlib.sh
 vec4 packFloatToRgba(float _value)
@@ -31,6 +32,14 @@ void main()
 	
 	//if(g_id == 1)  FragColor = vec4(1,0,0,1);
 	//else if(g_id == 2)  FragColor = vec4(1,1,0,1);
+	
+	vec2 text_size = textureSize(depthTextureSampler, 0);
+	vec4 p2 = texture(depthTextureSampler, gl_FragCoord.xy / text_size);
+	float depth = unpackRgbaToFloat(p2);
+	//if (depth == 0)
+	//FragColor = vec4(1,1,0,1);
+	if(depth > 0 && gl_FragCoord.z > depth)
+		FragColor = vec4(0);
 	  
 	idTexture = g_id;
 	depthTexture =   packFloatToRgba(gl_FragCoord.z);

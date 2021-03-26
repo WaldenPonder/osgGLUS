@@ -10,48 +10,74 @@
 #include "osg/Math"
 using namespace std;
 
-
 namespace osgViewer
 {
 	class Viewer;
 };
 
-extern osg::Texture2D* g_texture;
-extern osg::Texture2D* g_depthTexture;
-extern osg::Texture2D* g_idTexture;
-extern osg::Texture2D* g_linePtTexture;
-extern osg::Camera* g_rttCamera;
-extern osg::ref_ptr <osg::Node> g_sceneNode;
+extern osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
 extern osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer1;
 extern osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
+
 extern osgViewer::Viewer* g_viewer;
-#define TEXTURE_SIZE1 1024
-#define TEXTURE_SIZE2 1024
+extern bool g_is_top_view;
+extern int TEXTURE_SIZE1;
+extern int TEXTURE_SIZE2;
 
 extern osg::Group* g_root;
 extern osg::BoundingBox g_line_bbox;
-extern osg::Vec4 CLEAR_COLOR;// (204 / 255, 213 / 255, 240 / 255, 1);
+extern osg::Vec4 CLEAR_COLOR;
 
 extern osg::Geode* g_hidden_line_geode;
 extern bool g_is_orth_camera;
 extern osg::PositionAttitudeTransform* g_mouseBoxPat;
+extern bool g_line_hole_enable;
+
+struct RenderPass
+{
+	osg::Texture2D* baseColorTexture = nullptr;
+	osg::Texture2D* depthTexture = nullptr;
+	osg::Texture2D* idTexture = nullptr;
+	osg::Texture2D* linePtTexture = nullptr;
+	osg::Camera* rttCamera = nullptr;
+};
+
+extern RenderPass g_linePass;
+extern RenderPass g_facePass;
 
 #define NM_HUD (1 << 2)
+#define NM_HIDDEN_LINE (1 << 3)
+#define NM_FACE (1 << 4)
+#define NM_OUT_LINE (1 << 5)
+#define NM_LINE (1 << 6)
+#define NM_HIDE_OBJECT (1 << 7)
+#define NM_ALL (~0)
+
+//越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
+namespace RenderPriority 
+{
+	static const int FACE = 1; //面
+	static const int DOT_LINE = 2; //虚线
+	static const int LINE = 3; //实线
+	static const int OUT_LINE = 4; //轮廓线
+};
 
 //------------------------------------------------------------------------------------------LineHole
 class LineHole
 {
 public:
-	static std::vector<osg::Texture2D*> createRttCamera(osgViewer::Viewer* viewer);
+	static osg::Camera* createLineRttCamera(osgViewer::Viewer* viewer);
+	static osg::Camera* createFaceRttCamera(osgViewer::Viewer* viewer);
+
 	static osg::ref_ptr<osg::TextureBuffer> create_tbo(const vector<int>& data);
 
 	//最终显示的贴图
-	static osg::Camera* createHudCamera(osgViewer::Viewer* viewer, std::vector<osg::Texture2D*> TEXTURES);
+	static osg::Camera* createHudCamera(osgViewer::Viewer* viewer);
 
 	//虚线
 	static void setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera);
 
-	static void setUpStateset(osg::StateSet* ss, osg::Camera* camera);
+	static void setUpStateset(osg::StateSet* ss, osg::Camera* camera, bool isLine = true);
 
 	static osg::Geometry* createFinalHudTextureQuad(osg::ref_ptr<osg::Program> program, const osg::Vec3& corner, const osg::Vec3& widthVec,
 		const osg::Vec3& heightVec, float l = 0, float b = 0, float r = 1, float t = 1);
@@ -64,15 +90,6 @@ public:
 
 	static osg::Geometry* createLine2(const std::vector<osg::Vec3>& allPTs, const std::vector<osg::Vec4>& colors,
 		const std::vector<int>& ids, osg::Camera* camera, osg::PrimitiveSet::Mode mode = osg::PrimitiveSet::LINE_LOOP);
-
-	//虚线 区分内外
-	static osg::Node* create_lines0(osgViewer::Viewer& view);
-
-	//打断  连接关系  不相交不打断
-	static osg::Node* create_lines1(osgViewer::Viewer& view);
-
-	//大场景
-	static osg::Node* create_lines2(osgViewer::Viewer& view);
 
 	static osg::Uniform* getOrCreateMVPUniform(osg::Camera* camera);
 };
@@ -139,13 +156,13 @@ public:
 			mat = mCamera->getViewMatrix();
 
 		osg::Matrixd  mvp = mat *  mCamera->getProjectionMatrix() * mCamera->getViewport()->computeWindowMatrix();
-		float sz = 12;
+		float sz = 10;
 		osg::Vec3d p1(-sz, 0, 1);
 		osg::Vec3d p2(sz, 0, 1);
 
 		float range = (p1 * mvp - p2 * mvp).length();
-		std::cout << range << "\n";
-		if (range > 50) range = 50;
+		//std::cout << range << "\n";
+		if (range > 70) range = 70;
 		uniform->set(range);
 	}
 
@@ -176,8 +193,24 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 50) range = 50;
+		if (range > 70) range = 70;
 		uniform->set(range);
+	}
+
+private:
+	osg::Camera* mCamera;
+};
+
+//------------------------------------------------------------------------------------------LineHoleCallback
+class LineHoleCallback : public osg::Uniform::Callback
+{
+public:
+	LineHoleCallback(osg::Camera* camera) : mCamera(camera)
+	{
+	}
+	virtual void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
+	{
+		uniform->set(g_line_hole_enable);
 	}
 
 private:

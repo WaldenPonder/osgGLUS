@@ -4,7 +4,7 @@
 #include <osg/PolygonOffset>
 #include "ReadJsonFile.h"
 
-std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer)
+namespace util
 {
 	auto create_texture = [&]() {
 		osg::Texture2D* texture2d = new osg::Texture2D;
@@ -21,6 +21,17 @@ std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer
 		texture2d->setInternalFormat(GL_R32I);
 		texture2d->setSourceFormat(GL_R32I);
 		texture2d->setSourceType(GL_INT);
+		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
+		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
+		return texture2d;
+	};
+
+	auto create_line_pt_texture = [&]() {
+		osg::Texture2D* texture2d = new osg::Texture2D;
+		texture2d->setTextureSize(TEXTURE_SIZE1, TEXTURE_SIZE2);
+		texture2d->setInternalFormat(GL_RGBA32F_ARB);
+		texture2d->setSourceFormat(GL_RGBA);
+		texture2d->setSourceType(GL_FLAT);
 		texture2d->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
 		texture2d->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
 		return texture2d;
@@ -44,41 +55,73 @@ std::vector<osg::Texture2D*> LineHole::createRttCamera(osgViewer::Viewer* viewer
 		return texture;
 	};
 
-	g_rttCamera = new osg::Camera;
-	g_root->addChild(g_rttCamera);
-	// set up the background color and clear mask.
-	g_rttCamera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	// set view
-	g_rttCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-	// set viewport
-	g_rttCamera->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
+	osg::Camera* createRttCamera(osgViewer::Viewer* viewer)
+	{
+		osg::Camera* rttCamera = new osg::Camera;
+		rttCamera->setClearColor(CLEAR_COLOR);
+		g_root->addChild(rttCamera);
+		// set up the background color and clear mask.
+		//rttCamera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// set view
+		rttCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+		// set viewport
+		rttCamera->setViewport(0, 0, TEXTURE_SIZE1, TEXTURE_SIZE2);
 
-	// set the camera to render before the main camera.
-	g_rttCamera->setRenderOrder(osg::Camera::PRE_RENDER);
+		// set the camera to render before the main camera.
+		rttCamera->setRenderOrder(osg::Camera::PRE_RENDER);
 
-	// tell the camera to use OpenGL frame buffer object where supported.
-	g_rttCamera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+		// tell the camera to use OpenGL frame buffer object where supported.
+		rttCamera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 
-	g_texture = create_texture();
-	g_depthTexture = create_texture();
-	g_idTexture = create_id_texture();
-	g_linePtTexture = create_texture();
+		osg::Camera* mainCamera = viewer->getCamera();
+		rttCamera->setProjectionMatrix(mainCamera->getProjectionMatrix());
+		rttCamera->setViewMatrix(mainCamera->getViewMatrix());
+		rttCamera->addPreDrawCallback(new CameraPredrawCallback(rttCamera, mainCamera));
+
+		return rttCamera;
+	}
+}
+
+using namespace util;
+
+osg::Camera* LineHole::createLineRttCamera(osgViewer::Viewer* viewer)
+{
+	osg::Camera* rttCamera = createRttCamera(viewer);
+	rttCamera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	rttCamera->setCullMask(NM_LINE | NM_OUT_LINE | NM_HIDDEN_LINE | NM_FACE);
+	g_linePass.baseColorTexture = create_texture();
+	g_linePass.idTexture = create_id_texture();
+	g_linePass.depthTexture = create_texture();
+	g_linePass.linePtTexture = create_line_pt_texture();
 
 	// attach the texture and use it as the color buffer.
-	g_rttCamera->attach(osg::Camera::COLOR_BUFFER0, g_texture, 0, 0, false);
-	g_rttCamera->attach(osg::Camera::COLOR_BUFFER1, g_idTexture, 0, 0, false);
-	g_rttCamera->attach(osg::Camera::COLOR_BUFFER2, g_depthTexture, 0, 0, false);
-	g_rttCamera->attach(osg::Camera::COLOR_BUFFER3, g_linePtTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER0, g_linePass.baseColorTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER1, g_linePass.idTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER2, g_linePass.depthTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER3, g_linePass.linePtTexture, 0, 0, false);
 
-	osg::Camera* mainCamera = viewer->getCamera();
-	g_rttCamera->setProjectionMatrix(mainCamera->getProjectionMatrix());
-	g_rttCamera->setViewMatrix(mainCamera->getViewMatrix());
-	g_rttCamera->addPreDrawCallback(new CameraPredrawCallback(g_rttCamera, mainCamera));
+	return rttCamera;
+}
 
-	//g_rttCamera->addChild(create_lines1(*viewer));
-	//g_rttCamera->addChild(ReadJsonFile::createScene(g_elementRoot));
+osg::Camera* LineHole::createFaceRttCamera(osgViewer::Viewer* viewer)
+{
+	osg::Camera* rttCamera = createRttCamera(viewer);
+	rttCamera->setRenderOrder(osg::Camera::PRE_RENDER);
+	rttCamera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	rttCamera->setCullMask(NM_FACE );
+	rttCamera->getOrCreateStateSet()->setRenderBinDetails(-10, "RenderBin");
+	g_facePass.baseColorTexture = create_texture();
+	g_facePass.idTexture = create_id_texture();
+	g_facePass.depthTexture = create_texture();
+	g_facePass.linePtTexture = create_line_pt_texture();
 
-	return { g_texture, g_depthTexture, g_idTexture, g_linePtTexture };
+	// attach the texture and use it as the color buffer.
+	rttCamera->attach(osg::Camera::COLOR_BUFFER0, g_facePass.baseColorTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER1, g_facePass.idTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER2, g_facePass.depthTexture, 0, 0, false);
+	rttCamera->attach(osg::Camera::COLOR_BUFFER3, g_facePass.linePtTexture, 0, 0, false);
+
+	return rttCamera;
 }
 
 osg::ref_ptr<osg::TextureBuffer> LineHole::create_tbo(const vector<int>& data)
@@ -98,54 +141,75 @@ osg::ref_ptr<osg::TextureBuffer> LineHole::create_tbo(const vector<int>& data)
 	return tbo;
 }
 
-osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer, std::vector<osg::Texture2D*> TEXTURES)
+osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 {
 	osg::Geode* geode_quat = nullptr;
 	osg::Geometry* screenQuat = nullptr;
 	osg::Camera* hud_camera_ = new osg::Camera;
 	hud_camera_->setNodeMask(NM_HUD);
 
+	float w_ = TEXTURE_SIZE1;
+	float h_ = TEXTURE_SIZE2;
+
+	hud_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	hud_camera_->setProjectionMatrixAsOrtho(0, w_, 0, h_, -1, 1);
+	hud_camera_->setViewMatrix(osg::Matrix::identity());
+	hud_camera_->setRenderOrder(osg::Camera::POST_RENDER);
+	hud_camera_->setClearColor(CLEAR_COLOR);
+	hud_camera_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	hud_camera_->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+	osg::Vec3 eye, center, up;
+	hud_camera_->getViewMatrixAsLookAt(eye, center, up);
+
 	osg::Camera* mainCamera = viewer->getCamera();
 	mainCamera->setClearColor(CLEAR_COLOR);
 	osg::Viewport* vp = mainCamera->getViewport();
 
-	float w_ = TEXTURE_SIZE1;
-	float h_ = TEXTURE_SIZE2;
+	//默认相机，视角沿z轴往下看，多张图，要先渲染远处的，才能得到正确结果
 
-	osg::ref_ptr<osg::Program> program = new osg::Program;
-	screenQuat = createFinalHudTextureQuad(program, osg::Vec3(), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
+#if 1 //面在下，先画
+	float faceZ = -0.5;
+	float lineZ = -0.3;
+
+	int lineQuatPriority = 2;
+	int faceQuatPriority = 1;
+#else//面在上，后画
+	float faceZ = -0.3;
+	float lineZ = -0.5;
+
+	int lineQuatPriority = 1;
+	int faceQuatPriority = 2;
+#endif
+
+	//-----------------------------------------------------------line
+	osg::ref_ptr<osg::Program> lineProgram = new osg::Program;
+	screenQuat = createFinalHudTextureQuad(lineProgram, osg::Vec3(0, 0, lineZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
 	{
-		hud_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-		hud_camera_->setProjectionMatrixAsOrtho2D(0, w_, 0, h_);
-		hud_camera_->setViewMatrix(osg::Matrix::identity());
-		hud_camera_->setRenderOrder(osg::Camera::POST_RENDER);
-		hud_camera_->setClearColor(CLEAR_COLOR);
-		hud_camera_->setClearMask(GL_DEPTH_BUFFER_BIT);
-		hud_camera_->getOrCreateStateSet()->setMode(GL_LIGHTING,
-			osg::StateAttribute::OFF);
-
 		geode_quat = new osg::Geode;
 		hud_camera_->addChild(geode_quat);
 		screenQuat->setUseVertexBufferObjects(true);
 		geode_quat->addChild(screenQuat);
 		//geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-		//geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+		geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
 		screenQuat->setDataVariance(osg::Object::DYNAMIC);
 		screenQuat->setSupportsDisplayList(false);
 
 		osg::StateSet* ss = geode_quat->getOrCreateStateSet();
-		ss->setTextureAttributeAndModes(0, TEXTURES[0], osg::StateAttribute::ON);
-		ss->setTextureAttributeAndModes(1, TEXTURES[1], osg::StateAttribute::ON);
-		ss->setTextureAttributeAndModes(2, TEXTURES[2], osg::StateAttribute::ON);
-		ss->setTextureAttributeAndModes(3, TEXTURES[3], osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(0, g_linePass.baseColorTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(1, g_linePass.depthTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(2, g_linePass.idTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(3, g_linePass.linePtTexture, osg::StateAttribute::ON);
 		ss->setTextureAttributeAndModes(4, g_textureBuffer1, osg::StateAttribute::ON);
 		ss->setTextureAttributeAndModes(5, g_textureBuffer2, osg::StateAttribute::ON);
-
+		ss->setRenderBinDetails(lineQuatPriority, "RenderBin");
+		ss->setAttributeAndModes(new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA));
 		osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/line_hole_quad.vert");
 		osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/line_hole_quad.frag");
-		program->addShader(vert);
-		program->addShader(frag);
+
+		lineProgram->addShader(vert);
+		lineProgram->addShader(frag);
 		ss->addUniform(new osg::Uniform("baseTexture", 0));
 		ss->addUniform(new osg::Uniform("depthTexture", 1));
 		ss->addUniform(new osg::Uniform("idTexture", 2));
@@ -164,8 +228,68 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer, std::vector<os
 		osg::Uniform* range2 = new osg::Uniform(osg::Uniform::FLOAT, "u_inner_range");
 		range2->setUpdateCallback(new InnerRangeCallback(viewer->getCamera()));
 		ss->addUniform(range2);
-		
-		ss->setAttributeAndModes(program, osg::StateAttribute::ON);
+
+		osg::Uniform* range3 = new osg::Uniform(osg::Uniform::BOOL, "u_line_hole_enable");
+		range3->setUpdateCallback(new LineHoleCallback(viewer->getCamera()));
+		ss->addUniform(range3);
+
+		ss->setAttributeAndModes(lineProgram, osg::StateAttribute::ON);
+	}
+
+	//-----------------------------------------------------------face
+	osg::ref_ptr<osg::Program> faceProgram = new osg::Program;
+	screenQuat = createFinalHudTextureQuad(faceProgram, osg::Vec3(0, 0, faceZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
+	{
+		geode_quat = new osg::Geode;
+		hud_camera_->addChild(geode_quat);
+		screenQuat->setUseVertexBufferObjects(true);
+		geode_quat->addChild(screenQuat);
+		//geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+		geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+
+		screenQuat->setDataVariance(osg::Object::DYNAMIC);
+		screenQuat->setSupportsDisplayList(false);
+
+		osg::StateSet* ss = geode_quat->getOrCreateStateSet();
+		ss->setTextureAttributeAndModes(0, g_facePass.baseColorTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(1, g_facePass.depthTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(2, g_facePass.idTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(3, g_facePass.linePtTexture, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(4, g_textureBuffer1, osg::StateAttribute::ON);
+		ss->setTextureAttributeAndModes(5, g_textureBuffer2, osg::StateAttribute::ON);
+		ss->setAttributeAndModes(new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA));
+		ss->setRenderBinDetails(faceQuatPriority, "RenderBin");
+
+		osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/line_hole_quad.vert");
+		osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/line_hole_quad.frag");
+
+		faceProgram->addShader(vert);
+		faceProgram->addShader(frag);
+		ss->addUniform(new osg::Uniform("baseTexture", 0));
+		ss->addUniform(new osg::Uniform("depthTexture", 1));
+		ss->addUniform(new osg::Uniform("idTexture", 2));
+		ss->addUniform(new osg::Uniform("linePtTexture", 3));
+		ss->addUniform(new osg::Uniform("textureBuffer1", 4));
+		ss->addUniform(new osg::Uniform("textureBuffer2", 5));
+
+		osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
+		u_MVP->setUpdateCallback(new MVPCallback(hud_camera_));
+		ss->addUniform(u_MVP);
+
+		osg::Uniform* range = new osg::Uniform(osg::Uniform::FLOAT, "u_out_range");
+		range->setUpdateCallback(new OutRangeCallback(viewer->getCamera()));
+		ss->addUniform(range);
+
+		osg::Uniform* range2 = new osg::Uniform(osg::Uniform::FLOAT, "u_inner_range");
+		range2->setUpdateCallback(new InnerRangeCallback(viewer->getCamera()));
+		ss->addUniform(range2);
+
+		osg::Uniform* range3 = new osg::Uniform(osg::Uniform::BOOL, "u_line_hole_enable");
+		range3->set(false);
+		//range3->setUpdateCallback(new LineHoleCallback(viewer->getCamera()));
+		ss->addUniform(range3);
+
+		ss->setAttributeAndModes(faceProgram, osg::StateAttribute::ON);
 	}
 
 	return hud_camera_;
@@ -173,7 +297,7 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer, std::vector<os
 
 void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 {
-	osg::Depth* depth = new osg::Depth(osg::Depth::GREATER);
+	osg::Depth* depth = new osg::Depth(osg::Depth::GEQUAL);
 	ss->setAttributeAndModes(depth, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
 	ss->setAttributeAndModes(new osg::LineStipple(1, 0x0fff), osg::StateAttribute::ON);
@@ -196,9 +320,10 @@ void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 	ss->addUniform(getOrCreateMVPUniform(camera));
 }
 
-void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera)
+void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera, bool isLine)
 {
-	osg::Depth* depth = new osg::Depth(osg::Depth::LEQUAL);
+	//如果是less equal, 实线最后画会出问题，会导致有些情况下，虚线的颜色留下来了，id却被实线擦除
+	osg::Depth* depth = new osg::Depth(osg::Depth::LESS);
 	ss->setAttributeAndModes(depth, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
 
@@ -218,6 +343,12 @@ void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera)
 
 	//-----------------------------------------------uniform
 	ss->addUniform(getOrCreateMVPUniform(camera));
+
+	if (isLine)
+	{
+		ss->addUniform(new osg::Uniform("depthTextureSampler", 0));
+		ss->setTextureAttributeAndModes(0, g_facePass.depthTexture, osg::StateAttribute::ON);
+	}
 }
 
 osg::Geometry* LineHole::createFinalHudTextureQuad(osg::ref_ptr<osg::Program> program, const osg::Vec3& corner,
@@ -326,13 +457,13 @@ osg::Geometry* LineHole::myCreateTexturedQuadGeometry2(osg::Camera* camera, int 
 	return geom;
 }
 
-osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, const std::vector<osg::Vec4>& color, 
+osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, const std::vector<osg::Vec4>& color,
 	const std::vector<int>& ids, osg::Camera* camera)
 {
 	osg::ref_ptr<osg::Program> program = new osg::Program;
 	program->setName("LINE_HOLE_FACE");
 	osg::Geometry* geom = new osg::Geometry;
-
+	geom->setUserValue("ID", ids.front());
 	osg::Vec3Array* coords = new osg::Vec3Array;
 	for (auto& pt : allPTs)
 	{
@@ -398,6 +529,7 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 	int nCount = allPTs.size();
 
 	osg::ref_ptr<osg::Geometry> pGeometry = new osg::Geometry();
+	pGeometry->setUserValue("ID", ids.front());
 
 	osg::ref_ptr<osg::Vec3Array> a_pos = new osg::Vec3Array;
 
@@ -437,265 +569,6 @@ osg::Geometry* LineHole::createLine2(const std::vector<osg::Vec3>& allPTs, const
 	pGeometry->setVertexAttribBinding(2, osg::Geometry::BIND_PER_VERTEX);
 
 	return pGeometry.release();
-}
-
-osg::Node* LineHole::create_lines0(osgViewer::Viewer& view)
-{	
-	osg::ref_ptr<osg::Group> root = new osg::Group;
-	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-	g_hidden_line_geode = new osg::Geode;
-	root->addChild(geode);
-	root->addChild(g_hidden_line_geode);
-	vector<osg::Vec3>		 PTs, COLORs;
-
-	setUpStateset(geode->getOrCreateStateSet(), view.getCamera());
-	setUpHiddenLineStateset(g_hidden_line_geode->getOrCreateStateSet(), view.getCamera());
-
-	float z;
-	//-------------------------------------------------
-	osg::Geode* geode2 = new osg::Geode;
-	{
-		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1.5, -1.5, -0.5), osg::Vec3(3, 0, 0), osg::Vec3(0, 3, 0));
-		geode2->addChild(geom);
-		root->addChild(geode2);
-
-		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-		osg::StateSet* ss = geom->getOrCreateStateSet();
-		ss->setRenderBinDetails(1, "RenderBin"); //面
-
-		PTs.clear();
-		z = -0.5;
-		PTs.push_back(osg::Vec3(-1.5, -1.5, z));
-		PTs.push_back(osg::Vec3(1.5, -1.5, z));
-		PTs.push_back(osg::Vec3(1.5, 1.5, z));
-		PTs.push_back(osg::Vec3(-1.5, 1.5, z));
-		
-		osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 1 }, view.getCamera());
-		g_hidden_line_geode->addDrawable(n4);
-		ss = n4->getOrCreateStateSet();
-		ss->setRenderBinDetails(20, "RenderBin"); //虚线
-		
-		n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 1 }, view.getCamera());
-		n4->setName("LINE4");
-		geode->addDrawable(n4);
-		ss = n4->getOrCreateStateSet();
-		ss->setRenderBinDetails(3, "RenderBin"); //实线
-	}
-
-	   	
-	//-------------------------------------------------
-	geode2 = new osg::Geode;
-	{
-		auto geom = myCreateTexturedQuadGeometry2(view.getCamera(), 0, osg::Vec3(-1, -1, 0), osg::Vec3(2.5, 0, 0), osg::Vec3(0, 2.5, 0));
-		geode2->addChild(geom);
-		root->addChild(geode2);
-		//越小越先画，默认0, 面要最先画, 虚线第二画， 实体线最后画
-		osg::StateSet* ss = geom->getOrCreateStateSet();
-		ss->setRenderBinDetails(1, "RenderBin"); //面
-
-		PTs.clear();
-		z = 0;
-		PTs.push_back(osg::Vec3(-1, -1, z));
-		PTs.push_back(osg::Vec3(1.5, -1, z));
-		PTs.push_back(osg::Vec3(1.5, 1.5, z));
-		PTs.push_back(osg::Vec3(-1, 1.5, z));
-
-		osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(1, 1, 1, 1) }, { 2 }, view.getCamera());
-		g_hidden_line_geode->addDrawable(n5);
-		ss = n5->getOrCreateStateSet();
-		ss->setRenderBinDetails(20, "RenderBin"); //虚线
-
-		n5 = createLine2(PTs, { osg::Vec4(1, 1, 1, 1) }, { 2 }, view.getCamera());
-		n5->setName("LINE5");
-		geode->addDrawable(n5);
-			   
-		ss = n5->getOrCreateStateSet();
-		ss->setRenderBinDetails(3, "RenderBin"); //实线
-	}
-
-	vector<int> index1(100);
-	vector<int> index2(100);
-	g_textureBuffer1 = create_tbo(index1);
-	g_textureBuffer2 = create_tbo(index2);
-
-	osg::ComputeBoundsVisitor cbbv;
-	root->accept(cbbv);
-	g_line_bbox = cbbv.getBoundingBox();
-
-	return root.release();
-}
-
-osg::Node* LineHole::create_lines1(osgViewer::Viewer& view)
-{
-	std::default_random_engine eng(time(NULL));
-	std::uniform_real_distribution<float> rd(0, 1);
-
-	osg::ref_ptr<osg::Group> root = new osg::Group;
-	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-	root->addChild(geode);
-	vector<osg::Vec3>		 PTs, COLORs;
-
-	setUpStateset(geode->getOrCreateStateSet(), view.getCamera());
-
-	float z = 0.5f;
-	PTs.push_back(osg::Vec3(2, 0, z));
-	PTs.push_back(osg::Vec3(-2, 0, z));
-	osg::Geometry* n = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { 1 }, view.getCamera());
-	n->setName("LINE1");
-	geode->addDrawable(n);
-
-	PTs.clear();
-	z = 0.35f;
-	PTs.push_back(osg::Vec3(0, 2, z));
-	PTs.push_back(osg::Vec3(0, -2, z));
-	n = createLine2(PTs, { osg::Vec4(1, 1, 0, 1) }, { 4 }, view.getCamera());
-	n->setName("LINE2");
-	geode->addDrawable(n);
-
-	PTs.clear();
-	z = -0.5;
-	PTs.push_back(osg::Vec3(-1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, -1.5, z));
-	PTs.push_back(osg::Vec3(1.5, 1.5, z));
-	PTs.push_back(osg::Vec3(-1.5, 1.5, z));
-
-	osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { 3 }, view.getCamera());
-	n4->setName("LINE4");
-	geode->addDrawable(n4);
-	
-	PTs.clear();
-	z = 0;
-	PTs.push_back(osg::Vec3(-1, -1, z));
-	PTs.push_back(osg::Vec3(1.5, -1, z));
-	PTs.push_back(osg::Vec3(1.5, 1.5, z));
-	PTs.push_back(osg::Vec3(-1, 1.5, z));
-	osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { 888 }, view.getCamera());
-	n5->setName("LINE5");
-	geode->addDrawable(n5);
-
-#if 0
-	vector<int> index1(100);
-	index1[1] = 1;
-	index1[2] = 0;
-	index1[3] = 4;
-	index1[4] = 7;
-
-	vector<int> index2(100);
-	//id == 1
-	index2[1] = 3;
-	index2[2] = 4;
-	index2[3] = 0;
-
-	//id == 3
-	index2[4] = 1;
-	index2[5] = 4;
-	index2[6] = 0;
-
-	//id == 4
-	index2[7] = 1;
-	index2[8] = 3;
-	index2[9] = 0;
-#else
-
-	vector<int> index1(100);
-	index1[1] = 1;
-	index1[2] = 0;
-	index1[3] = 3;
-	index1[4] = 0;
-
-	vector<int> index2(100);
-	//id == 1
-	index2[1] = 3;
-	index2[2] = 0;
-
-	//id == 3
-	index2[3] = 1;
-	index2[4] = 0;
-
-#endif
-
-	g_textureBuffer1 = create_tbo(index1);
-	g_textureBuffer2 = create_tbo(index2);
-
-	osg::ComputeBoundsVisitor cbbv;
-	geode->accept(cbbv);
-	g_line_bbox = cbbv.getBoundingBox();
-
-	return root.release();
-}
-
-osg::Node* LineHole::create_lines2(osgViewer::Viewer& view)
-{
-	osg::ref_ptr<osg::Group> root = new osg::Group;
-
-	g_hidden_line_geode = new osg::Geode;
-	root->addChild(g_hidden_line_geode);
-	vector<osg::Vec3>		 PTs, COLORs;
-
-	setUpHiddenLineStateset(g_hidden_line_geode->getOrCreateStateSet(), view.getCamera());
-	float z;
-	int id = 1;
-	for (int i = 0; i < 10; i++)
-	{
-		for (int s = 1; s < 10; s++)
-		{
-			osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-			root->addChild(geode);
-			vector<osg::Vec3>		 PTs, COLORs;
-
-			setUpStateset(geode->getOrCreateStateSet(), view.getCamera());
-			
-
-			setUpStateset(geode->getOrCreateStateSet(), view.getCamera());
-
-			float z = 0.5 + i + s;
-			PTs.push_back(osg::Vec3(2 * s, 0, z));
-			PTs.push_back(osg::Vec3(-2 * s, 0, z));
-			osg::Geometry* n = createLine2(PTs, { osg::Vec4(1, 0, 0, 1) }, { id++ }, view.getCamera());
-			n->setName("LINE1");
-			geode->addDrawable(n);
-
-			PTs.clear(); 
-			z = 0.35f;
-			PTs.push_back(osg::Vec3(0, 2 * s, z));
-			PTs.push_back(osg::Vec3(0, -2 * s, z));
-			n = createLine2(PTs, { osg::Vec4(1, 1, 0, 1) }, { id++ }, view.getCamera());
-			n->setName("LINE2");
-			geode->addDrawable(n);
-
-			PTs.clear(); 
-			z = -0.5 + 1 + i + s;
-			PTs.push_back(osg::Vec3(-1.5 * s, -1.5 * s, z));
-			PTs.push_back(osg::Vec3(1.5 * s, -1.5 * s, z));
-			PTs.push_back(osg::Vec3(1.5 * s, 1.5 * s, z));
-			PTs.push_back(osg::Vec3(-1.5 * s, 1.5 * s, z));
-
-			osg::Geometry* n4 = createLine2(PTs, { osg::Vec4(0, 0, 1, 1) }, { id++ }, view.getCamera());
-			n4->setName("LINE4");
-			geode->addDrawable(n4);
-
-			PTs.clear(); 
-			z =  i + s;
-			PTs.push_back(osg::Vec3(-1 * s, -1 * s, z));
-			PTs.push_back(osg::Vec3(1.5 * s, -1 * s, z));
-			PTs.push_back(osg::Vec3(1.5 * s, 1.5 * s, z));
-			PTs.push_back(osg::Vec3(-1 * s, 1.5 * s, z));
-			osg::Geometry* n5 = createLine2(PTs, { osg::Vec4(0, 1, 1, 1) }, { id++ }, view.getCamera());
-			n5->setName("LINE5");
-			geode->addDrawable(n5);
-		}
-	}
-
-	vector<int> index1(100);
-	vector<int> index2(100);
-	g_textureBuffer1 = create_tbo(index1);
-	g_textureBuffer2 = create_tbo(index2);
-
-	osg::ComputeBoundsVisitor cbbv;
-	root->accept(cbbv);
-	g_line_bbox = cbbv.getBoundingBox();
-
-	return root.release();
 }
 
 osg::ref_ptr<osg::Uniform> s_mvp_uniform;

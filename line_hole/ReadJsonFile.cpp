@@ -49,7 +49,7 @@ void parseGeometry(const Json::Value& value, Geometrys& geometry)
 		parsePoint(value["EndPoint"], line.EndPoint);
 		geometry.lines.push_back(line);
 	}
-	else if(type == "Arc")
+	else if (type == "Arc")
 	{
 		ARC arc;
 		parsePoint(value["StartPoint"], arc.StartPoint);
@@ -57,7 +57,7 @@ void parseGeometry(const Json::Value& value, Geometrys& geometry)
 		parsePoint(value["Center"], arc.Center);
 		geometry.arcs.push_back(arc);
 	}
-	else if(type == "Triangle")
+	else if (type == "Triangle")
 	{
 		TRIANGLE triangle;
 		parsePoint(value["FirstPoint"], triangle.FirstPoint);
@@ -90,21 +90,28 @@ void ReadJsonFile::read(const std::string& fileName)
 	int delta = max(size / 100, 1);
 	for (int i = 0; i < size; i++)
 	{
-		if(i % delta == 0)
+		if (i % delta == 0)
 			cout << i << "  --- " << size << "\n";
 
 		MEPElement element;
 		Json::Value ELEMENT = root["MEPElements"][i];
 
 		parseColor(ELEMENT["Color"], element.Color);
-		
-		element.ConnectedElementId = ELEMENT["ConnectedElementId"][0].asString();
+
+		int connectedSize = ELEMENT["ConnectedElementId"].size();
+		for (int j = 0; j < connectedSize; j++)
+		{
+			uint64_t val = ELEMENT["ConnectedElementId"][j].asUInt64();
+
+			element.ConnectedElementId.push_back(val);
+		}
+
 		element.GUID = ELEMENT["GUID"].asString();
 
 		parseGeometry(ELEMENT["Geometry"], element.Geometry);
 
 		element.HasGeometry = ELEMENT["HasGeometry"].asBool();
-		element.Id = ELEMENT["Id"].asString();
+		element.Id = ELEMENT["Id"].asUInt64();
 		element.Name = ELEMENT["Name"].asString();
 		g_elementRoot.MEPElements.push_back(element);
 	}
@@ -123,12 +130,22 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			allPTs.push_back(line.EndPoint);
 		}
 
-		
-		osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
-		osg::Geode* geode = new osg::Geode;
-		geode->addDrawable(geometry);
-		root->addChild(geode);
-		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
+		{
+			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
+			osg::Geode* geode = new osg::Geode;
+			geode->setNodeMask(NM_LINE);
+			geode->addDrawable(geometry);
+			root->addChild(geode);
+			LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
+			geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::LINE, "RenderBin"); //实线
+
+			osg::Geode* geodeHidden = new osg::Geode;
+			geodeHidden->setNodeMask(NM_HIDDEN_LINE);
+			geodeHidden->addDrawable(geometry);
+			root->addChild(geodeHidden);
+			LineHole::setUpHiddenLineStateset(geodeHidden->getOrCreateStateSet(), g_viewer->getCamera());
+			geodeHidden->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::DOT_LINE, "RenderBin"); //虚线
+		}
 	}
 
 	//-----------------------------------------------------------arc
@@ -140,14 +157,14 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			int r = (arc.Center - arc.EndPoint).length();
 			osg::Vec3 dir = arc.StartPoint - arc.Center;
 			dir.normalize();
-			float start =  acos(dir * osg::X_AXIS);
+			float start = acos(dir * osg::X_AXIS);
 
 			dir = arc.EndPoint - arc.Center;
 			dir.normalize();
 			float end = acos(dir * osg::X_AXIS);
 			float delta = (end - start) / 20.f;
-			
-			if(abs(end - start) < 0.001) continue;
+
+			if (abs(end - start) < 0.001) continue;
 
 			for (float f = start; f <= end; f += delta)
 			{
@@ -162,13 +179,23 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			}
 		}
 
-		osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
-		osg::Geode* geode = new osg::Geode;
-		geode->addDrawable(geometry);
-		root->addChild(geode);
-		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
-	}
+		{
+			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
+			osg::Geode* geode = new osg::Geode;
+			geode->setNodeMask(NM_LINE);
+			geode->addDrawable(geometry);
+			root->addChild(geode);
+			LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
+			geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::LINE, "RenderBin"); //实线
 
+			osg::Geode* geodeHidden = new osg::Geode;
+			geodeHidden->setNodeMask(NM_HIDDEN_LINE);
+			geodeHidden->addDrawable(geometry);
+			root->addChild(geodeHidden);
+			LineHole::setUpHiddenLineStateset(geodeHidden->getOrCreateStateSet(), g_viewer->getCamera());
+			geodeHidden->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::DOT_LINE, "RenderBin"); //虚线
+		}
+	}
 
 	//-----------------------------------------------------------triangle
 	{
@@ -181,54 +208,60 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			allPTs.push_back(triangle.ThirdPoint);
 		}
 
-		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(54. / 255., 78./255., 111./255.0, 1) }, { id }, g_viewer->getCamera());
+		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(184.0 / 255, 213. / 255., 220.0 / 255, 1) }, { id }, g_viewer->getCamera());
 		osg::Geode* geode = new osg::Geode;
+		geode->setNodeMask(NM_FACE);
 		geode->addDrawable(geometry);
 		root->addChild(geode);
-		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
+		geometry->setNodeMask(NM_FACE);
+
+		//越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
+		geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::FACE, "RenderBin"); //面
+		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera(), false);
 	}
 
 	return root.release();
 }
 
-osg::Node* ReadJsonFile::createScene(const ElementGroup& root)
+osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 {
-	osg::ref_ptr<osg::Group> rootNode = new osg::Group;
+	osg::ref_ptr<osg::MatrixTransform> rootNode = new osg::MatrixTransform;
 
-	//json文件的string id 到数组下标
-	unordered_map<string, int> IDMAP;
+	sort(root.MEPElements.begin(), root.MEPElements.end(), [](const MEPElement& elemt1, const MEPElement& elemt2) {
+		return elemt1.Id < elemt2.Id;
+		});
+
+	unordered_map<uint64_t, int> IDMAP;//长ID到短ID的映射
+	unordered_map<int, uint64_t> IDMAP2; //短到长的映射
+	for (int i = 0; i < root.MEPElements.size(); i++)
+	{
+		auto& ELEMENT = root.MEPElements[i];
+		IDMAP[ELEMENT.Id] = i + 1;
+		IDMAP2[i + 1] = ELEMENT.Id;
+	}
 
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
 		auto& ELEMENT = root.MEPElements[i];
 		osg::ref_ptr<osg::Group> elementGroup = new osg::Group;
 		rootNode->addChild(elementGroup);
-		IDMAP[ELEMENT.Id] = i + 1;
-		elementGroup->addChild(handleGeometry(ELEMENT, i + 1));
+
+		ELEMENT.Id = IDMAP[ELEMENT.Id];
+
+		for (uint64_t& id : ELEMENT.ConnectedElementId)
+		{
+			id = IDMAP[id];
+		}
+
+		elementGroup->addChild(handleGeometry(ELEMENT, ELEMENT.Id));
 	}
 
-	auto to_int_id = [&IDMAP](const string & id)
-	{
-		return IDMAP[id];
-	};
-
-	//获取id 对应关系
-	unordered_map<int, vector<int>> id_maps;
+	vector<int> index1(root.MEPElements.size() + 100);
+	vector<int> index2;
+	index2.push_back(0);
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
-		auto& ELEMENT = root.MEPElements[i];
-
-		int id = to_int_id(ELEMENT.Id);
-		int idConnected = to_int_id(ELEMENT.ConnectedElementId);
-		id_maps[id].push_back(idConnected);
-	}
-
-	vector<int> index1(id_maps.size() + 100);
-	vector<int> index2;
-
-	for (int i = 1; i <= root.MEPElements.size(); i++)
-	{
-		vector<int> idConnected = id_maps[i];
+		vector<uint64_t> idConnected = root.MEPElements[i].ConnectedElementId;
 		if (idConnected.size() == 0)
 		{
 			index1[i] = 0; //说明第i个构建，没有连接关系
@@ -244,8 +277,26 @@ osg::Node* ReadJsonFile::createScene(const ElementGroup& root)
 	g_textureBuffer1 = LineHole::create_tbo(index1);
 	g_textureBuffer2 = LineHole::create_tbo(index2);
 
-	g_sceneNode = rootNode;
+	auto to_long = [&](int i) {
+		return IDMAP2[i];
+	};
 
+	for (int i = 0; i < root.MEPElements.size(); i++)
+	{
+		auto& element = root.MEPElements[i];
+		cout << to_long(element.Id) << "  :  \n";
+
+		if(element.ConnectedElementId.empty())
+			continue;
+
+		for (int j : element.ConnectedElementId)
+		{
+			cout << to_long(j) << "\n";
+		}
+
+		cout << "\n\n";
+	}
+	//getchar();
 	osg::ComputeBoundsVisitor cbbv;
 	rootNode->accept(cbbv);
 	g_line_bbox = cbbv.getBoundingBox();

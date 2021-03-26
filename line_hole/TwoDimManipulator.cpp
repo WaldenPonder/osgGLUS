@@ -4,7 +4,7 @@
 #include <iostream>
 #include "LineHole.h"
 
-extern osg::ref_ptr <osg::Node> g_sceneNode;
+extern osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
 
 namespace util {
 	osg::Vec3 screenToWorld(osg::Camera* camera, const osg::Vec3& screenPoint)
@@ -49,24 +49,34 @@ TwoDimManipulator::~TwoDimManipulator()
 {
 }
 
+
 osg::Matrixd TwoDimManipulator::getMatrix() const
 {
-	osg::Matrixd matrix;
-	matrix.makeTranslate(0.0f, 0.0f, _distance);
-	matrix.postMultTranslate(_center);
-	return matrix;
+	return osg::Matrix::inverse(getInverseMatrix());
 }
 
 osg::Matrixd TwoDimManipulator::getInverseMatrix() const
 {
-	osg::Matrixd matrix;
-	matrix.makeTranslate(0.0f, 0.0f, -_distance);
-	matrix.preMultTranslate(-_center);
-
 	float w = getCamera()->getViewport()->width() * _distance;
 	float h = getCamera()->getViewport()->height() * _distance;
 	getCamera()->setProjectionMatrixAsOrtho(-w / 2, w / 2, -h / 2, h / 2, 0, 1e5);
-	return matrix;
+
+	osg::Matrixd mat;
+	osg::Vec3d eye, up;
+	if (g_is_top_view)
+	{
+		eye = _center + osg::Z_AXIS * _distance;
+		up = osg::Y_AXIS;
+	}
+	else
+	{
+		eye = _center - osg::Y_AXIS * _distance;
+		up = osg::Z_AXIS;
+	}
+
+	mat.makeLookAt(eye, _center, up);
+
+	return mat;
 }
 
 void TwoDimManipulator::setByMatrix(const osg::Matrixd& matrix)
@@ -115,7 +125,11 @@ bool TwoDimManipulator::handleMouseDrag(const osgGA::GUIEventAdapter& ea, osgGA:
 		float h = getCamera()->getViewport()->height();
 
 		double screenWidthInWorld = util::screenWidthInWorld(getCamera());
-		_center -= osg::Vec3(deltaPt[0] / w * screenWidthInWorld, deltaPt[1] / h * (screenWidthInWorld * (h / w)), 0);
+
+		if(g_is_top_view)
+			_center -= osg::Vec3(deltaPt[0] / w * screenWidthInWorld, deltaPt[1] / h * (screenWidthInWorld * (h / w)), 0);
+		else 
+			_center -= osg::Vec3(deltaPt[0] / w * screenWidthInWorld, 0, deltaPt[1] / h * (screenWidthInWorld * (h / w)));
 
 		_preMousePt = osg::Vec2(ea.getX(), ea.getY());
 		us.requestRedraw();
@@ -162,12 +176,16 @@ void TwoDimManipulator::focusNode(osg::Node* geo)
 	osg::BoundingBox& bb = cbVisitor.getBoundingBox();
 	boundingSphere.expandBy(bb);
 	_center.set(boundingSphere.center());
-	_center += osg::Z_AXIS * boundingSphere.radius();
+
+	if(g_is_top_view)
+		_center += osg::Z_AXIS * boundingSphere.radius();
+	else 
+		_center -= osg::Y_AXIS * boundingSphere.radius();
 
 	double viewPortW = getCamera()->getViewport()->width();
 	double viewPortH = getCamera()->getViewport()->height();
 
-	_distance = (1.8f * boundingSphere.radius()) / min(viewPortW, viewPortH);
+	_distance = (1.8f * boundingSphere.radius()) / min(viewPortW, viewPortH); 
 	if (_distance <= 0)
 		_distance = 0.001;
 }

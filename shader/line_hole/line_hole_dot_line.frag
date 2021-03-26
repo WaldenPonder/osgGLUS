@@ -8,7 +8,6 @@ layout(location = 0) out vec4 FragColor;
 layout(location = 1) out int idTexture;
 layout(location = 2) out vec4 depthTexture;
 layout(location = 3) out vec4 linePtTexture;
-uniform bool u_is_hidden_line;
 
 //bgfx shaderlib.sh
 vec4 packFloatToRgba(float _value)

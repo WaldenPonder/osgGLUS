@@ -14,14 +14,19 @@ flat out vec4 v_linePt;
 
 void main() 
 {  
-   //TODO:  需要考虑当落在屏幕之外的情况
-    vec4 p1 = gl_in[0].gl_Position / gl_in[0].gl_Position.w;
-	vec4 p2 = gl_in[1].gl_Position / gl_in[1].gl_Position.w;
+#if 0
+   //透视
+    vec4 pos1 = gl_in[0].gl_Position / gl_in[0].gl_Position.w;
+	vec4 pos2 = gl_in[1].gl_Position / gl_in[1].gl_Position.w;
 
-	vec4 pos1 = (p1 + vec4(1.0)) / 2.0;
-	vec4 pos2 = (p2 + vec4(1.0)) / 2.0; 
+	// vec4 pos1 = (p1 + vec4(1.0)) / 2.0;
+	// vec4 pos2 = (p2 + vec4(1.0)) / 2.0; 
+#else
+	//正交视图
+    vec4 pos1 = gl_in[0].gl_Position;
+	vec4 pos2 = gl_in[1].gl_Position;
+#endif
 
-	
     v_linePt.xy = pos1.xy;
 	v_linePt.zw = pos2.xy;
 	//v_linePt = vec4(1,1,0,1);

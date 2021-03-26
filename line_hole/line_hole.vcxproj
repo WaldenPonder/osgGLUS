@@ -160,12 +160,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ConvexHullVisitor.h" />
     <ClInclude Include="LineHole.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ReadJsonFile.h" />
     <ClInclude Include="TwoDimManipulator.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConvexHullVisitor.cpp" />
     <ClCompile Include="LineHole.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
