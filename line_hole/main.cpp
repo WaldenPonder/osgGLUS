@@ -85,19 +85,14 @@ public:
 			}
 			else if (ea.getKey() == 'h')
 			{
+				if(g_convexRoot)
+					g_convexRoot->removeChildren(0, g_convexRoot->getNumChildren());
+
 				ConvexHullVisitor chv;
 				chv.setTraversalMask(NM_FACE);
 				g_sceneNode->accept(chv);
 
 				g_sceneNode->addChild(g_convexRoot);
-
-				for (int i = 0; i < g_convexRoot->getNumChildren(); i++)
-				{
-					g_sceneNode->addChild(g_convexRoot->getChild(i));
-				}
-
-				g_convexRoot->removeChildren(0, g_convexRoot->getNumChildren());
-				g_convexRoot.release();
 			}
 			else if (ea.getKey() == 'i')
 			{

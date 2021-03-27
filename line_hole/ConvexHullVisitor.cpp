@@ -63,11 +63,9 @@ vector<osg::Vec3> graham_scan(vector<osg::Vec3>& p)
 	return ch;
 }
 
-
-ConvexHullVisitor::ConvexHullVisitor() 
+ConvexHullVisitor::ConvexHullVisitor()
 	: osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
 {
-
 }
 
 void ConvexHullVisitor::apply(osg::Geode& geode)
@@ -90,16 +88,32 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 	if (!ptOrig || ptOrig->asVector().size() < 3)
 		return;
 
-
 	if (!g_convexRoot)
 		g_convexRoot = new osg::Group;
 
 	{
 		osg::ref_ptr<osg::Vec3Array> tempPts = new osg::Vec3Array;
-		tempPts->asVector() = ptOrig->asVector();
-		std::vector<osg::Vec3> allPTs = graham_scan(tempPts->asVector());
-		for (auto& pt : allPTs)
-			pt.z() = 10000;
+
+		std::vector<osg::Vec3> allPTs;
+
+		if (g_is_top_view)
+		{
+			tempPts->asVector() = ptOrig->asVector();
+			allPTs = graham_scan(tempPts->asVector());
+			for (auto& pt : allPTs)
+				pt.z() = 10000;
+		}
+		else
+		{
+			tempPts->asVector() = ptOrig->asVector();
+			for (auto& pt : tempPts->asVector())
+			{
+				pt = osg::Vec3(pt.x(), pt.z(), pt.y());
+			}
+			allPTs = graham_scan(tempPts->asVector());
+			for (auto& pt : allPTs)
+				pt = osg::Vec3(pt.x(), 10000, pt.y());
+		}
 
 		if (allPTs.size() < 2) return;
 
@@ -107,7 +121,7 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 
 		for (int i = 1; i < allPTs.size(); i++)
 		{
-			pts.push_back(allPTs[i- 1]);
+			pts.push_back(allPTs[i - 1]);
 			pts.push_back(allPTs[i]);
 		}
 

@@ -185,7 +185,7 @@ void TwoDimManipulator::focusNode(osg::Node* geo)
 	double viewPortW = getCamera()->getViewport()->width();
 	double viewPortH = getCamera()->getViewport()->height();
 
-	_distance = (1.8f * boundingSphere.radius()) / min(viewPortW, viewPortH); 
+	_distance = (1.8f * boundingSphere.radius()) / min(viewPortW, viewPortH);
 	if (_distance <= 0)
 		_distance = 0.001;
 }
