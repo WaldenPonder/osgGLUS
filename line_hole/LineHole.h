@@ -52,6 +52,9 @@ extern RenderPass g_facePass;
 #define NM_LINE (1 << 6)
 #define NM_HIDE_OBJECT (1 << 7)
 #define NM_ALL (~0)
+#define NM_LINE_PASS_QUAD (1 << 8)
+#define NM_FACE_PASS_QUAD (1 << 9)
+
 
 //越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
 namespace RenderPriority 
@@ -60,6 +63,20 @@ namespace RenderPriority
 	static const int DOT_LINE = 2; //虚线
 	static const int LINE = 3; //实线
 	static const int OUT_LINE = 4; //轮廓线
+};
+
+union ColorID
+{
+	explicit ColorID(unsigned int id_) : id(id_) {}
+	ColorID(unsigned char r_, unsigned char g_, unsigned char b_, unsigned char a_)
+		: r(r_), g(g_), b(b_), a(a_)
+	{
+	}
+
+	struct {
+		unsigned char r, g, b, a;
+	};
+	unsigned int id;
 };
 
 //------------------------------------------------------------------------------------------LineHole

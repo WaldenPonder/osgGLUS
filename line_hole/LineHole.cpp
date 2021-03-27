@@ -187,6 +187,7 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 	screenQuat = createFinalHudTextureQuad(lineProgram, osg::Vec3(0, 0, lineZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
 	{
 		geode_quat = new osg::Geode;
+		geode_quat->setNodeMask(NM_LINE_PASS_QUAD);
 		hud_camera_->addChild(geode_quat);
 		screenQuat->setUseVertexBufferObjects(true);
 		geode_quat->addChild(screenQuat);
@@ -241,6 +242,7 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 	screenQuat = createFinalHudTextureQuad(faceProgram, osg::Vec3(0, 0, faceZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
 	{
 		geode_quat = new osg::Geode;
+		geode_quat->setNodeMask(NM_FACE_PASS_QUAD);
 		hud_camera_->addChild(geode_quat);
 		screenQuat->setUseVertexBufferObjects(true);
 		geode_quat->addChild(screenQuat);

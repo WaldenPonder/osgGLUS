@@ -35,19 +35,13 @@ bool is_connected(int id1, int id2)
 
 	if(index == 0)
 		return false;
-
-	int max_connected = 100;
-	int i = 0;
-
+		
 	while(true)
 	{
 		int index2 = texelFetch(textureBuffer2, index).r;
 		if(index2 == id2) return true;
 		else if(index2 == 0) return false;  //index2 == 0, 代表所有与id1连接的对象已经遍历
 		index++;
-
-		i++;
-		if(i > max_connected) return false;
 	}
 
 	return false;
@@ -288,6 +282,15 @@ void main()
 		//fragColor = vec4(1,1,0,1);
 		return;
 	}
+	
+	// int aaa = texelFetch(textureBuffer2, 12).r;
+	
+	// if(aaa == 6)
+		// {
+		// //fragColor = baseColor; 
+		// fragColor = vec4(1,1,0,1);
+		// return;
+	// }
 	
 	vec2 text_size = textureSize(depthTexture, 0);
 	float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));

@@ -236,24 +236,25 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
 		auto& ELEMENT = root.MEPElements[i];
-		IDMAP[ELEMENT.Id] = i + 1;
-		IDMAP2[i + 1] = ELEMENT.Id;
+		IDMAP[ELEMENT.Id] = i + 20;
+		IDMAP2[i + 20] = ELEMENT.Id;
 	}
 
+	//把Id  ConnectedElementId都变成短的ID
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
-		auto& ELEMENT = root.MEPElements[i];
+		auto& element = root.MEPElements[i];
 		osg::ref_ptr<osg::Group> elementGroup = new osg::Group;
 		rootNode->addChild(elementGroup);
 
-		ELEMENT.Id = IDMAP[ELEMENT.Id];
+		element.Id = IDMAP[element.Id];
 
-		for (uint64_t& id : ELEMENT.ConnectedElementId)
+		for (uint64_t& id : element.ConnectedElementId)
 		{
 			id = IDMAP[id];
 		}
 
-		elementGroup->addChild(handleGeometry(ELEMENT, ELEMENT.Id));
+		elementGroup->addChild(handleGeometry(element, element.Id));
 	}
 
 	vector<int> index1(root.MEPElements.size() + 100);
@@ -262,17 +263,20 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
 		vector<uint64_t> idConnected = root.MEPElements[i].ConnectedElementId;
+		const int id = root.MEPElements[i].Id;
+
 		if (idConnected.size() == 0)
 		{
-			index1[i] = 0; //说明第i个构建，没有连接关系
+			index1[id] = 0; //说明第i个构建，没有连接关系
 		}
 		else
 		{
-			index1[i] = index2.size();
+			index1[id] = index2.size();
 			index2.insert(index2.end(), idConnected.begin(), idConnected.end());
 			index2.push_back(0);
 		}
 	}
+	index2.push_back(0);
 
 	g_textureBuffer1 = LineHole::create_tbo(index1);
 	g_textureBuffer2 = LineHole::create_tbo(index2);

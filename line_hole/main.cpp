@@ -17,6 +17,8 @@ osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer1;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
 
+osg::ref_ptr<osg::Camera> g_hudCamera;
+
 bool g_is_orth_camera = false;
 bool g_line_hole_enable = true;
 
@@ -31,6 +33,8 @@ osg::Geode* g_hidden_line_geode;
 osg::PositionAttitudeTransform* g_mouseBoxPat = nullptr;
 
 bool g_is_top_view = true;
+osg::ref_ptr<osgGA::TrackballManipulator> g_trackballManipulator;
+osg::ref_ptr<TwoDimManipulator> g_twodimManipulator;
 
 //切换场景
 class MyEventHandler : public osgGA::GUIEventHandler
@@ -45,33 +49,41 @@ public:
 		{
 			if (ea.getKey() == 'a')
 			{
-				g_is_orth_camera = true;
-				auto mani = new TwoDimManipulator(g_viewer);
-				g_viewer->setCameraManipulator(mani);
+				auto* mani = g_viewer->getCameraManipulator();
+				if (mani == g_trackballManipulator.get())
+				{
+					g_viewer->setCameraManipulator(g_twodimManipulator);
+					g_is_orth_camera = true;
+				}
+				//else
+				//{
+				//	g_viewer->setCameraManipulator(g_trackballManipulator);
+				//	g_is_orth_camera = false;
+				//}
 			}
-			else if(ea.getKey() == 'b')
+			else if (ea.getKey() == 'b')
 			{
 				g_is_top_view = !g_is_top_view;
 				g_viewer->getCameraManipulator()->home(0);
 			}
-			else if(ea.getKey() == 'c')
+			else if (ea.getKey() == 'c')
 			{
 				g_viewer->getCameraManipulator()->home(0);
 				g_viewer->getCameraManipulator()->home(ea, aa);
 			}
-			else if(ea.getKey() == 'd')
+			else if (ea.getKey() == 'd')
 			{
-				osg::Camera* camera = g_linePass.rttCamera;				
-				if(camera->getCullMask() & NM_HIDDEN_LINE)
+				osg::Camera* camera = g_linePass.rttCamera;
+				if (camera->getCullMask() & NM_HIDDEN_LINE)
 					camera->setCullMask(camera->getCullMask() & ~NM_HIDDEN_LINE);
-				else 
+				else
 					camera->setCullMask(camera->getCullMask() | NM_HIDDEN_LINE);
 			}
-			else if(ea.getKey() == 'e')
+			else if (ea.getKey() == 'e')
 			{
 				g_line_hole_enable = !g_line_hole_enable;
 			}
-			else if(ea.getKey() == 'h')
+			else if (ea.getKey() == 'h')
 			{
 				ConvexHullVisitor chv;
 				chv.setTraversalMask(NM_FACE);
@@ -86,6 +98,22 @@ public:
 
 				g_convexRoot->removeChildren(0, g_convexRoot->getNumChildren());
 				g_convexRoot.release();
+			}
+			else if (ea.getKey() == 'i')
+			{
+				unsigned mask = g_viewer->getCamera()->getCullMask();
+				if (mask & NM_FACE_PASS_QUAD)
+					g_viewer->getCamera()->setCullMask(mask & ~NM_FACE_PASS_QUAD);
+				else
+					g_viewer->getCamera()->setCullMask(mask | NM_FACE_PASS_QUAD);
+			}
+			else if (ea.getKey() == 'j')
+			{
+				unsigned mask = g_viewer->getCamera()->getCullMask();
+				if (mask & NM_LINE_PASS_QUAD)
+					g_viewer->getCamera()->setCullMask(mask & ~NM_LINE_PASS_QUAD);
+				else
+					g_viewer->getCamera()->setCullMask(mask | NM_LINE_PASS_QUAD);
 			}
 		}
 
@@ -144,6 +172,7 @@ void ReadFile()
 	ReadJsonFile::read(file_name);
 }
 
+//对id的可视化， id转颜色
 int main()
 {
 	ReadFile();
@@ -154,7 +183,7 @@ int main()
 	g_root = root;
 
 	view.setSceneData(root);
-	
+
 	setUp(view);
 
 	g_linePass.rttCamera = LineHole::createLineRttCamera(&view);
@@ -162,12 +191,11 @@ int main()
 
 	g_root->addChild(g_facePass.rttCamera);
 	g_root->addChild(g_linePass.rttCamera);
-	
-
-	osg::Camera* hud_camera = LineHole::createHudCamera(&view);
-	root->addChild(hud_camera);
 
 	g_sceneNode = ReadJsonFile::createScene(g_elementRoot);
+
+	g_hudCamera = LineHole::createHudCamera(&view);
+	root->addChild(g_hudCamera);
 
 	g_linePass.rttCamera->addChild(g_sceneNode);
 	g_facePass.rttCamera->addChild(g_sceneNode);
@@ -184,7 +212,7 @@ int main()
 		g_mouseBoxPat->getOrCreateStateSet()->setAttributeAndModes(new osg::ColorMask(false, false, false, false));
 		root->addChild(g_mouseBoxPat);
 	}
-		
+
 	//view.getCamera()->setCullMask(~NM_HIDE_OBJECT);
 	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
@@ -193,8 +221,13 @@ int main()
 	view.addEventHandler(new MyEventHandler);
 	//osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 
+	g_trackballManipulator = new osgGA::TrackballManipulator();
+	g_twodimManipulator = new TwoDimManipulator(&view);
+	view.setCameraManipulator(g_trackballManipulator);
+	g_is_orth_camera = false;
+
 	// add the state manipulator
-	if(g_facePass.rttCamera)
+	if (g_facePass.rttCamera)
 		view.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
 
 	if (g_linePass.rttCamera)
