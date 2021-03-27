@@ -32,6 +32,8 @@ extern osg::Geode* g_hidden_line_geode;
 extern bool g_is_orth_camera;
 extern osg::PositionAttitudeTransform* g_mouseBoxPat;
 extern bool g_line_hole_enable;
+extern bool g_always_dont_connected;
+extern bool g_always_intersection;
 
 struct RenderPass
 {
@@ -232,4 +234,14 @@ public:
 
 private:
 	osg::Camera* mCamera;
+};
+
+//------------------------------------------------------------------------------------------AlwaysDontConnectedCallback
+class AlwaysDontConnectedCallback : public osg::Uniform::Callback
+{
+public:
+	virtual void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
+	{
+		uniform->set(g_always_dont_connected);
+	}
 };

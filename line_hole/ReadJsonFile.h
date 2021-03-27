@@ -28,7 +28,7 @@ struct Geometrys
 {
 	vector<LINE> lines;
 	vector<ARC> arcs;
-	vector<TRIANGLE> triangles;
+	vector<vector<TRIANGLE>> triangles;
 };
 
 struct MEPElement

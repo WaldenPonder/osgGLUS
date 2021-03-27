@@ -21,6 +21,8 @@ osg::ref_ptr<osg::Camera> g_hudCamera;
 
 bool g_is_orth_camera = false;
 bool g_line_hole_enable = true;
+bool g_always_dont_connected = false; //构件之间，不考虑连接关系
+bool g_always_intersection = false; //不考虑直线相交的情况
 
 int TEXTURE_SIZE1;
 int TEXTURE_SIZE2;
@@ -36,6 +38,7 @@ bool g_is_top_view = true;
 osg::ref_ptr<osgGA::TrackballManipulator> g_trackballManipulator;
 osg::ref_ptr<TwoDimManipulator> g_twodimManipulator;
 
+
 //切换场景
 class MyEventHandler : public osgGA::GUIEventHandler
 {
@@ -49,17 +52,21 @@ public:
 		{
 			if (ea.getKey() == 'a')
 			{
+				static osg::Matrix s_projectionMatrix;
 				auto* mani = g_viewer->getCameraManipulator();
 				if (mani == g_trackballManipulator.get())
 				{
 					g_viewer->setCameraManipulator(g_twodimManipulator);
+					s_projectionMatrix = g_viewer->getCamera()->getProjectionMatrix();
+
 					g_is_orth_camera = true;
 				}
-				//else
-				//{
-				//	g_viewer->setCameraManipulator(g_trackballManipulator);
-				//	g_is_orth_camera = false;
-				//}
+				else
+				{
+					g_viewer->setCameraManipulator(g_trackballManipulator);
+					g_viewer->getCamera()->setProjectionMatrix(s_projectionMatrix);
+					g_is_orth_camera = false;
+				}
 			}
 			else if (ea.getKey() == 'b')
 			{
@@ -68,8 +75,7 @@ public:
 			}
 			else if (ea.getKey() == 'c')
 			{
-				g_viewer->getCameraManipulator()->home(0);
-				g_viewer->getCameraManipulator()->home(ea, aa);
+				g_always_dont_connected = !g_always_dont_connected;
 			}
 			else if (ea.getKey() == 'd')
 			{
@@ -109,6 +115,10 @@ public:
 					g_viewer->getCamera()->setCullMask(mask & ~NM_LINE_PASS_QUAD);
 				else
 					g_viewer->getCamera()->setCullMask(mask | NM_LINE_PASS_QUAD);
+			}
+			else if (ea.getKey() == 't')
+			{
+				g_always_intersection = !g_always_intersection;
 			}
 		}
 
@@ -222,8 +232,8 @@ int main()
 	g_is_orth_camera = false;
 
 	// add the state manipulator
-	if (g_facePass.rttCamera)
-		view.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
+	//if (g_facePass.rttCamera)
+	//	view.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
 
 	if (g_linePass.rttCamera)
 		view.addEventHandler(new osgGA::StateSetManipulator(g_linePass.rttCamera->getOrCreateStateSet()));

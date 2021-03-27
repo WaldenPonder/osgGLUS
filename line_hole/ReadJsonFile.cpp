@@ -6,6 +6,7 @@
 #include <fstream>
 #include "LineHole.h"
 #include <unordered_map>
+#include <osg/CullFace>
 
 #pragma warning(disable: 4996)
 
@@ -27,7 +28,7 @@ void parsePoint(const Json::Value& value, osg::Vec3& pt)
 	pt.z() = value[2].asFloat();
 }
 
-void parseGeometry(const Json::Value& value, Geometrys& geometry)
+void parseGeometry(const Json::Value& value, Geometrys& geometry, int level)
 {
 	auto t = value.type();
 	if (t == Json::arrayValue)
@@ -35,7 +36,7 @@ void parseGeometry(const Json::Value& value, Geometrys& geometry)
 		int size = value.size();
 		for (int i = 0; i < size; i++)
 		{
-			parseGeometry(value[i], geometry);
+			parseGeometry(value[i], geometry, level + 1);
 		}
 
 		return;
@@ -59,11 +60,15 @@ void parseGeometry(const Json::Value& value, Geometrys& geometry)
 	}
 	else if (type == "Triangle")
 	{
+		if (geometry.triangles.size() <= level)
+			geometry.triangles.resize(level + 1);
+
 		TRIANGLE triangle;
 		parsePoint(value["FirstPoint"], triangle.FirstPoint);
 		parsePoint(value["SecondPoint"], triangle.SecondPoint);
 		parsePoint(value["ThirdPoint"], triangle.ThirdPoint);
-		geometry.triangles.push_back(triangle);
+
+		geometry.triangles[level].push_back(triangle);
 	}
 }
 
@@ -108,7 +113,7 @@ void ReadJsonFile::read(const std::string& fileName)
 
 		element.GUID = ELEMENT["GUID"].asString();
 
-		parseGeometry(ELEMENT["Geometry"], element.Geometry);
+		parseGeometry(ELEMENT["Geometry"], element.Geometry, 0);
 
 		element.HasGeometry = ELEMENT["HasGeometry"].asBool();
 		element.Id = ELEMENT["Id"].asUInt64();
@@ -198,10 +203,11 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 	}
 
 	//-----------------------------------------------------------triangle
+	for(auto& triangleArr : element.Geometry.triangles)
 	{
 		std::vector<osg::Vec3> allPTs;
 
-		for (auto& triangle : element.Geometry.triangles)
+		for (auto& triangle : triangleArr)
 		{
 			allPTs.push_back(triangle.FirstPoint);
 			allPTs.push_back(triangle.SecondPoint);
@@ -218,6 +224,7 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 		//越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
 		geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::FACE, "RenderBin"); //面
 		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera(), false);
+		geode->getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 	}
 
 	return root.release();

@@ -234,7 +234,11 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 		range3->setUpdateCallback(new LineHoleCallback(viewer->getCamera()));
 		ss->addUniform(range3);
 
-		ss->setAttributeAndModes(lineProgram, osg::StateAttribute::ON);
+		osg::Uniform* range4 = new osg::Uniform(osg::Uniform::BOOL, "u_always_dont_connected");
+		range4->setUpdateCallback(new AlwaysDontConnectedCallback);
+		ss->addUniform(range4);
+
+		ss->setAttributeAndModes(lineProgram, osg::StateAttribute::ON); 
 	}
 
 	//-----------------------------------------------------------face
