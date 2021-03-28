@@ -181,7 +181,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 70) range = 70;
+		if (range > 50) range = 50;
 		uniform->set(range);
 	}
 
@@ -212,7 +212,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 70) range = 70;
+		if (range > 50) range = 50;
 		uniform->set(range);
 	}
 
