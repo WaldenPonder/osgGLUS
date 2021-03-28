@@ -14,7 +14,11 @@
 #endif //PCH_H
 
 
-#if 0 
+
+
+
+
+#if 0
 // Given three colinear points p, q, r, the function checks if
 // point q lies on line segment 'pr'
 bool onSegment(osg::Vec2 p, osg::Vec2 q, osg::Vec2 r)
@@ -65,39 +69,49 @@ bool doIntersect(osg::Vec2 p1, osg::Vec2 q1,
 			return true;
 	}
 
-#if 0
-	//点在线上不认为相交
-	// Special Cases
-	// p1, q1 and p2 are colinear and p2 lies on segment p1q1
-	if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+#if 1
+	int count = 0;
+	if (o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0)
+	{
+		//点在线上不认为相交
+// Special Cases
+// p1, q1 and p2 are colinear and p2 lies on segment p1q1
+		if (o1 == 0 && onSegment(p1, p2, q1)) count++;
 
-	// p1, q1 and q2 are colinear and q2 lies on segment p1q1
-	if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+		// p1, q1 and q2 are colinear and q2 lies on segment p1q1
+		if (o2 == 0 && onSegment(p1, q2, q1)) count++;
 
-	// p2, q2 and p1 are colinear and p1 lies on segment p2q2
-	if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+		// p2, q2 and p1 are colinear and p1 lies on segment p2q2
+		if (o3 == 0 && onSegment(p2, p1, q2)) count++;
 
-	// p2, q2 and q1 are colinear and q1 lies on segment p2q2
-	if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+		// p2, q2 and q1 are colinear and q1 lies on segment p2q2
+		if (o4 == 0 && onSegment(p2, q1, q2)) count++;
+	}
+
+	if (count >= 2) return true;
 #endif
 
 	return false; // Doesn't fall in any of the above cases
 }
 
 
-void main2()
+void main()
 {
 	bool flag = doIntersect(
-		osg::Vec2(-1, 0), osg::Vec2(1, 0), 
+		osg::Vec2(-1, 0), osg::Vec2(1, 0),
 		osg::Vec2(0, -1), osg::Vec2(0, 1));
 
+	bool flag2 = doIntersect(
+		osg::Vec2(-1, 0), osg::Vec2(1, 0),
+		osg::Vec2(0, 0), osg::Vec2(0, 1));
+
+	bool flag3 = doIntersect(
+		osg::Vec2(-1, 0), osg::Vec2(1, 0),
+		osg::Vec2(0, 0), osg::Vec2(2, 0));
 	getchar();
 
 }
 #endif
-
-
-
 
 
 

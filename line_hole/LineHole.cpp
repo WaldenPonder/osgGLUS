@@ -238,6 +238,10 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 		range4->setUpdateCallback(new AlwaysDontConnectedCallback);
 		ss->addUniform(range4);
 
+		osg::Uniform* range5 = new osg::Uniform(osg::Uniform::BOOL, "u_always_intersection");
+		range5->setUpdateCallback(new AlwaysIntersectionCallback);
+		ss->addUniform(range5);
+
 		ss->setAttributeAndModes(lineProgram, osg::StateAttribute::ON); 
 	}
 

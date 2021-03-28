@@ -10,11 +10,7 @@ inline void add_event_handler(osgViewer::Viewer&   viewer)
 	// add the state manipulator
 	viewer.addEventHandler(new osgGA::StateSetManipulator(
 		viewer.getCamera()->getOrCreateStateSet()));
-
-	// add the state manipulator
-	viewer.addEventHandler(new osgGA::StateSetManipulator(
-		viewer.getCamera()->getOrCreateStateSet()));
-
+	
 	// add the thread model handler
 	viewer.addEventHandler(new osgViewer::ThreadingHandler);
 

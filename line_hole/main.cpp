@@ -89,6 +89,20 @@ public:
 			{
 				g_line_hole_enable = !g_line_hole_enable;
 			}
+			else if(ea.getKey() == 'f')
+			{
+				unsigned mask = g_linePass.rttCamera->getCullMask();
+				if(mask & NM_FACE)
+					g_linePass.rttCamera->setCullMask(mask & ~NM_FACE);
+				else 
+					g_linePass.rttCamera->setCullMask(mask | NM_FACE);
+
+				unsigned mask2 = g_facePass.rttCamera->getCullMask();
+				if (mask2 & NM_FACE)
+					g_facePass.rttCamera->setCullMask(mask2 & ~NM_FACE);
+				else
+					g_facePass.rttCamera->setCullMask(mask2 | NM_FACE);
+			}
 			else if (ea.getKey() == 'h')
 			{
 				if(g_convexRoot)
@@ -182,24 +196,24 @@ int main()
 {
 	ReadFile();
 
-	osgViewer::Viewer view;
+	osgViewer::Viewer viewer;
 	osg::Group* root = new osg::Group;
-	g_viewer = &view;
+	g_viewer = &viewer;
 	g_root = root;
 
-	view.setSceneData(root);
+	viewer.setSceneData(root);
 
-	setUp(view);
+	setUp(viewer);
 
-	g_linePass.rttCamera = LineHole::createLineRttCamera(&view);
-	g_facePass.rttCamera = LineHole::createFaceRttCamera(&view);
+	g_linePass.rttCamera = LineHole::createLineRttCamera(&viewer);
+	g_facePass.rttCamera = LineHole::createFaceRttCamera(&viewer);
 
 	g_root->addChild(g_facePass.rttCamera);
 	g_root->addChild(g_linePass.rttCamera);
 
 	g_sceneNode = ReadJsonFile::createScene(g_elementRoot);
 
-	g_hudCamera = LineHole::createHudCamera(&view);
+	g_hudCamera = LineHole::createHudCamera(&viewer);
 	root->addChild(g_hudCamera);
 
 	g_linePass.rttCamera->addChild(g_sceneNode);
@@ -222,21 +236,21 @@ int main()
 	//view.getCamera()->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 	//g_rttCamera->setComputeNearFarMode(osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES);
 
-	add_event_handler(view);
-	view.addEventHandler(new MyEventHandler);
+	viewer.addEventHandler(new osgViewer::StatsHandler);
+	viewer.addEventHandler(new MyEventHandler);
 	//osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
 
 	g_trackballManipulator = new osgGA::TrackballManipulator();
-	g_twodimManipulator = new TwoDimManipulator(&view);
-	view.setCameraManipulator(g_trackballManipulator);
+	g_twodimManipulator = new TwoDimManipulator(&viewer);
+	viewer.setCameraManipulator(g_trackballManipulator);
 	g_is_orth_camera = false;
 
-	// add the state manipulator
+	//// add the state manipulator
 	//if (g_facePass.rttCamera)
-	//	view.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
+	//	viewer.addEventHandler(new osgGA::StateSetManipulator(g_facePass.rttCamera->getOrCreateStateSet()));
 
 	if (g_linePass.rttCamera)
-		view.addEventHandler(new osgGA::StateSetManipulator(g_linePass.rttCamera->getOrCreateStateSet()));
+		viewer.addEventHandler(new osgGA::StateSetManipulator(g_linePass.rttCamera->getOrCreateStateSet()));
 
-	return view.run();
+	return viewer.run();
 }

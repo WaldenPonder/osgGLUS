@@ -245,3 +245,13 @@ public:
 		uniform->set(g_always_dont_connected);
 	}
 };
+
+//------------------------------------------------------------------------------------------AlwaysDontConnectedCallback
+class AlwaysIntersectionCallback : public osg::Uniform::Callback
+{
+public:
+	virtual void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv)
+	{
+		uniform->set(g_always_intersection);
+	}
+};

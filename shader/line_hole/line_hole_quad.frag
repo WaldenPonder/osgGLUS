@@ -10,8 +10,8 @@ uniform float u_out_range;
 uniform float u_inner_range;
 
 uniform bool u_line_hole_enable;
-uniform bool u_always_dont_connected; //连接关系
-
+uniform bool u_always_dont_connected; //连接关系  测试用
+uniform bool u_always_intersection; //判断连接时，永远相交， 测试用
 
 in vec2 texcoord;
 out vec4 fragColor;
@@ -78,7 +78,7 @@ int orientation(vec2 p, vec2 q, vec2 r){
 	// if (all(equal(vec2(val1 - val2, val2 - val1), vec2(0))))
 		// return 0;  // colinear
 
-	if(abs(val1 - val2) < 0.01) return 0;
+	if(abs(val1 - val2) < 0.001) return 0;
 
 	return (val1 - val2 > 0)? 1: 2; // clock or counterclock wise
 }
@@ -87,6 +87,8 @@ int orientation(vec2 p, vec2 q, vec2 r){
 // and 'p2q2' intersect.
 bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 {
+	if(u_always_intersection) 
+		return true;
 	// Find the four orientations needed for general and
 	// special cases
 	int o1 = orientation(p1, q1, p2);
@@ -100,26 +102,26 @@ bool doIntersect(vec2 p1, vec2 q1, vec2 p2, vec2 q2)
 		if(o1 != 0 && o2 != 0 && o3 != 0 && o4 != 0) //点在线上不认为相交
 			return true;
 	}
-		
-#if 0
-	int count = 0;
-    //点在线上不认为相交, 除非是重合
-	// Special Cases
-	// p1, q1 and p2 are colinear and p2 lies on segment p1q1
-	if (o1 == 0 && onSegment(p1, p2, q1)) count++;
-
-	// p1, q1 and q2 are colinear and q2 lies on segment p1q1
-	if (o2 == 0 && onSegment(p1, q2, q1)) count++;
-
-	// p2, q2 and p1 are colinear and p1 lies on segment p2q2
-	if (o3 == 0 && onSegment(p2, p1, q2)) count++;
-
-	// p2, q2 and q1 are colinear and q1 lies on segment p2q2
-	if (o4 == 0 && onSegment(p2, q1, q2)) count++;
 	
-	if(count >= 2) return true;
-#endif
+	if(o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0)  //点在线上不认为相交, 除非是重合
+	{
+		int count = 0;		
+		// Special Cases
+		// p1, q1 and p2 are colinear and p2 lies on segment p1q1
+		if (o1 == 0 && onSegment(p1, p2, q1)) count++;
 
+		// p1, q1 and q2 are colinear and q2 lies on segment p1q1
+		if (o2 == 0 && onSegment(p1, q2, q1)) count++;
+		
+		// p2, q2 and p1 are colinear and p1 lies on segment p2q2
+		if (o3 == 0 && onSegment(p2, p1, q2)) count++;
+
+		// p2, q2 and q1 are colinear and q1 lies on segment p2q2
+		if (o4 == 0 && onSegment(p2, q1, q2)) count++;
+		
+		if(count >= 2) return true;
+	}
+	
 	return false; // Doesn't fall in any of the above cases
 }
 
