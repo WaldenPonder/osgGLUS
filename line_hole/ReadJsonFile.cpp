@@ -134,7 +134,7 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			allPTs.push_back(line.StartPoint);
 			allPTs.push_back(line.EndPoint);
 		}
-
+		
 		{
 			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
 			osg::Geode* geode = new osg::Geode;

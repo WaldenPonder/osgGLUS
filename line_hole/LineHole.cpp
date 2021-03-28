@@ -307,7 +307,7 @@ osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
 
 void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
 {
-	osg::Depth* depth = new osg::Depth(osg::Depth::GEQUAL);
+	osg::Depth* depth = new osg::Depth(osg::Depth::GREATER);
 	ss->setAttributeAndModes(depth, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 	ss->setAttributeAndModes(new osg::LineWidth(2), osg::StateAttribute::ON);
 	ss->setAttributeAndModes(new osg::LineStipple(1, 0x0fff), osg::StateAttribute::ON);
