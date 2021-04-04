@@ -70,7 +70,7 @@ ConvexHullVisitor::ConvexHullVisitor()
 
 void ConvexHullVisitor::apply(osg::Geode& geode)
 {
-	if (geode.getNodeMask() != NM_FACE)
+	if (geode.getNodeMask() != NM_FACE && geode.getNodeMask() != NM_QIAOJIA_JIDIANSHEBEI)
 		return;
 
 	if (geode.getNumChildren() == 0)
@@ -78,7 +78,8 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 
 	osg::Geometry* geometry = dynamic_cast<osg::Geometry*>(geode.getDrawable(0));
 
-	if (!geometry || geometry->getNodeMask() != NM_FACE) return;
+	if (!geometry || (geometry->getNodeMask() != NM_FACE && geometry->getNodeMask() != NM_QIAOJIA_JIDIANSHEBEI) )
+		return;
 
 	int id = 0;
 	bool flag = geometry->getUserValue("ID", id);
@@ -100,8 +101,13 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 		{
 			tempPts->asVector() = ptOrig->asVector();
 			allPTs = graham_scan(tempPts->asVector());
+
+			float zVal = 0;
+
 			for (auto& pt : allPTs)
-				pt.z() = 10000;
+				zVal = max(zVal, pt.z());
+			for (auto& pt : allPTs)
+				pt.z() = zVal + 0.1;
 		}
 		else
 		{
@@ -111,8 +117,14 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 				pt = osg::Vec3(pt.x(), pt.z(), pt.y());
 			}
 			allPTs = graham_scan(tempPts->asVector());
+
+			float yVal = 0;
+
 			for (auto& pt : allPTs)
-				pt = osg::Vec3(pt.x(), 10000, pt.y());
+				yVal = max(yVal, pt.z());
+
+			for (auto& pt : allPTs)
+				pt = osg::Vec3(pt.x(), yVal  + 0.1, pt.y());
 		}
 
 		if (allPTs.size() < 2) return;
@@ -121,7 +133,7 @@ void ConvexHullVisitor::apply(osg::Geode& geode)
 
 		for (int i = 1; i < allPTs.size(); i++)
 		{
-			pts.push_back(allPTs[i - 1]);
+			pts.push_back(allPTs[i- 1]);
 			pts.push_back(allPTs[i]);
 		}
 

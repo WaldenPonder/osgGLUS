@@ -29,6 +29,6 @@ void main()
 {
    FragColor = g_color;
    idTexture = -g_id;
-   depthTexture =   packFloatToRgba(gl_FragCoord.z);
+   depthTexture = packFloatToRgba(gl_FragCoord.z);
    linePtTexture = v_linePt;
 }

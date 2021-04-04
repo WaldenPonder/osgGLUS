@@ -11,6 +11,7 @@
 
 RenderPass g_linePass;
 RenderPass g_facePass;
+RenderPass g_cablePass;
 
 osgViewer::Viewer* g_viewer;
 osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
@@ -23,6 +24,7 @@ bool g_is_orth_camera = false;
 bool g_line_hole_enable = true;
 bool g_always_dont_connected = false; //构件之间，不考虑连接关系
 bool g_always_intersection = false; //不考虑直线相交的情况
+bool g_is_daoxian_file = false;
 
 int TEXTURE_SIZE1;
 int TEXTURE_SIZE2;
@@ -37,7 +39,6 @@ osg::PositionAttitudeTransform* g_mouseBoxPat = nullptr;
 bool g_is_top_view = true;
 osg::ref_ptr<osgGA::TrackballManipulator> g_trackballManipulator;
 osg::ref_ptr<TwoDimManipulator> g_twodimManipulator;
-
 
 //切换场景
 class MyEventHandler : public osgGA::GUIEventHandler
@@ -89,12 +90,12 @@ public:
 			{
 				g_line_hole_enable = !g_line_hole_enable;
 			}
-			else if(ea.getKey() == 'f')
+			else if (ea.getKey() == 'f')
 			{
 				unsigned mask = g_linePass.rttCamera->getCullMask();
-				if(mask & NM_FACE)
+				if (mask & NM_FACE)
 					g_linePass.rttCamera->setCullMask(mask & ~NM_FACE);
-				else 
+				else
 					g_linePass.rttCamera->setCullMask(mask | NM_FACE);
 
 				unsigned mask2 = g_facePass.rttCamera->getCullMask();
@@ -105,11 +106,11 @@ public:
 			}
 			else if (ea.getKey() == 'h')
 			{
-				if(g_convexRoot)
+				if (g_convexRoot)
 					g_convexRoot->removeChildren(0, g_convexRoot->getNumChildren());
 
 				ConvexHullVisitor chv;
-				chv.setTraversalMask(NM_FACE);
+				chv.setTraversalMask(NM_FACE | NM_QIAOJIA_JIDIANSHEBEI);
 				g_sceneNode->accept(chv);
 
 				g_sceneNode->addChild(g_convexRoot);
@@ -130,9 +131,39 @@ public:
 				else
 					g_viewer->getCamera()->setCullMask(mask | NM_LINE_PASS_QUAD);
 			}
+			else if (ea.getKey() == 'k')
+			{
+				unsigned mask = g_viewer->getCamera()->getCullMask();
+				if (mask & NM_CABLE_PASS_QUAD)
+					g_viewer->getCamera()->setCullMask(mask & ~NM_CABLE_PASS_QUAD);
+				else
+					g_viewer->getCamera()->setCullMask(mask | NM_CABLE_PASS_QUAD);
+			}
 			else if (ea.getKey() == 't')
 			{
 				g_always_intersection = !g_always_intersection;
+			}
+			else if (ea.getKey() == 'y')
+			{
+				system("cls");
+				osg::Matrix mvp = g_viewer->getCamera()->getViewMatrix() * g_viewer->getCamera()->getProjectionMatrix();
+
+				for (int i = 0; i < g_elementRoot.MEPElements.size(); i++)
+				{
+					auto& element = g_elementRoot.MEPElements[i];
+
+					for (const LINE& line : element.Geometry.lines)
+					{
+						osg::Vec4 pt = osg::Vec4(line.StartPoint, 1)* mvp;
+						bool b1 = abs(pt.x()) < 1 && abs(pt.y()) < 1;
+
+						osg::Vec4 pt2 = osg::Vec4(line.EndPoint, 1) * mvp;
+						bool b2 = abs(pt2.x()) < 1 && abs(pt2.y()) < 1;
+
+						if(b1 && b2)
+							cout << "  ---   " << pt  << "\t" << pt2 << "\n";
+					}
+				}			
 			}
 		}
 
@@ -164,34 +195,49 @@ int setUp(osgViewer::Viewer& view)
 void ReadFile()
 {
 	TEXTURE_SIZE1 = TEXTURE_SIZE2 = 1024;
-	std::string file_name = "F:\\MEP_Json\\机电遮挡.json";
+	std::string file_name;
 
 	bool bReadFileSuccess = true;
+	ifstream IF(shader_dir() + "/line_hole/config.ini");
+
+	if (!IF.is_open())
+	{
+		bReadFileSuccess = false;
+		return;
+	}
+
 	do
 	{
-		ifstream IF(shader_dir() + "/line_hole/config.ini");
-
-		if (!IF.is_open())
-		{
-			bReadFileSuccess = false;
-			break;
-		}
-
 		string buf;
 		getline(IF, buf);
-		if (buf != "FILE_PATH:")
-			bReadFileSuccess = false;
-		getline(IF, buf);
-		file_name = buf;
-	} while (0);
-
-	if (!bReadFileSuccess)
-		cout << "读取配置文件失败" << endl;
+		if (buf == "FILE_PATH:")
+		{
+			getline(IF, buf);
+			if (!buf.empty())
+			{
+				g_is_daoxian_file = false;
+				file_name = buf;
+			}				
+		}
+		else if (buf == "DAOXIAN_FILE:")
+		{
+			getline(IF, buf);
+			if (!buf.empty())
+			{
+				file_name = buf;
+				g_is_daoxian_file = true;
+			}
+		}
+	} while (!IF.fail());
 
 	ReadJsonFile::read(file_name);
 }
 
-//对id的可视化， id转颜色
+
+/*
+3> 机电设备和其它构建的遮挡关系正常
+*/
+
 int main()
 {
 	ReadFile();
@@ -205,11 +251,17 @@ int main()
 
 	setUp(viewer);
 
-	g_linePass.rttCamera = LineHole::createLineRttCamera(&viewer);
-	g_facePass.rttCamera = LineHole::createFaceRttCamera(&viewer);
+	g_linePass.type = RenderPass::LINE_PASS;
+	g_facePass.type = RenderPass::FACE_PASS;
+	g_cablePass.type = RenderPass::CABLE_PASS;
+
+	LineHole::createRttCamera(&viewer, g_linePass);
+	LineHole::createRttCamera(&viewer, g_facePass);
+	LineHole::createRttCamera(&viewer, g_cablePass);
 
 	g_root->addChild(g_facePass.rttCamera);
 	g_root->addChild(g_linePass.rttCamera);
+	g_root->addChild(g_cablePass.rttCamera);
 
 	g_sceneNode = ReadJsonFile::createScene(g_elementRoot);
 
@@ -218,6 +270,13 @@ int main()
 
 	g_linePass.rttCamera->addChild(g_sceneNode);
 	g_facePass.rttCamera->addChild(g_sceneNode);
+	g_cablePass.rttCamera->addChild(g_sceneNode);
+
+	g_linePass.rttCamera->setCullMask(NM_LINE | NM_OUT_LINE | NM_HIDDEN_LINE | NM_FACE);
+	//底图
+	g_facePass.rttCamera->setCullMask(NM_FACE);// | NM_QIAOJIA_JIDIANSHEBEI);
+	//导线pass, 不需要绘制隐藏线
+	g_cablePass.rttCamera->setCullMask(NM_CABLE | NM_QIAOJIA_JIDIANSHEBEI | NM_OUT_LINE);
 
 	//没什么意义，不会显示，只是为了鼠标操作方便
 	{
@@ -238,7 +297,7 @@ int main()
 
 	viewer.addEventHandler(new osgViewer::StatsHandler);
 	viewer.addEventHandler(new MyEventHandler);
-	//osg::setNotifyLevel(osg::NotifySeverity::NOTICE);
+	osg::setNotifyLevel(osg::NotifySeverity::WARN);
 
 	g_trackballManipulator = new osgGA::TrackballManipulator();
 	g_twodimManipulator = new TwoDimManipulator(&viewer);

@@ -34,9 +34,15 @@ extern osg::PositionAttitudeTransform* g_mouseBoxPat;
 extern bool g_line_hole_enable;
 extern bool g_always_dont_connected;
 extern bool g_always_intersection;
+extern bool g_is_daoxian_file;
 
 struct RenderPass
 {
+	enum {
+		LINE_PASS,
+		FACE_PASS,
+		CABLE_PASS
+	} type;
 	osg::Texture2D* baseColorTexture = nullptr;
 	osg::Texture2D* depthTexture = nullptr;
 	osg::Texture2D* idTexture = nullptr;
@@ -46,6 +52,7 @@ struct RenderPass
 
 extern RenderPass g_linePass;
 extern RenderPass g_facePass;
+extern RenderPass g_cablePass;
 
 #define NM_HUD (1 << 2)
 #define NM_HIDDEN_LINE (1 << 3)
@@ -56,6 +63,11 @@ extern RenderPass g_facePass;
 #define NM_ALL (~0)
 #define NM_LINE_PASS_QUAD (1 << 8)
 #define NM_FACE_PASS_QUAD (1 << 9)
+#define NM_CABLE_PASS_QUAD (1 << 10)
+
+//导线 桥接  机电设备
+#define NM_CABLE (1 << 11)
+#define NM_QIAOJIA_JIDIANSHEBEI (1 << 12)
 
 
 //越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
@@ -85,13 +97,15 @@ union ColorID
 class LineHole
 {
 public:
-	static osg::Camera* createLineRttCamera(osgViewer::Viewer* viewer);
-	static osg::Camera* createFaceRttCamera(osgViewer::Viewer* viewer);
+	static void createRttCamera(osgViewer::Viewer* viewer, RenderPass& pass);
 
 	static osg::ref_ptr<osg::TextureBuffer> create_tbo(const vector<int>& data);
 
 	//最终显示的贴图
 	static osg::Camera* createHudCamera(osgViewer::Viewer* viewer);
+
+	static void createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera_, osg::Geometry* screenQuat,
+		int priority, int mask, osg::ref_ptr<osg::Program> program, osgViewer::Viewer* viewer);
 
 	//虚线
 	static void setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera);
@@ -181,7 +195,7 @@ public:
 
 		float range = (p1 * mvp - p2 * mvp).length();
 		//std::cout << range << "\n";
-		if (range > 50) range = 50;
+		if (range > 250) range = 250;
 		uniform->set(range);
 	}
 
@@ -211,8 +225,8 @@ public:
 		osg::Vec3d p2(sz, 0, 1);
 
 		float range = (p1 * mvp - p2 * mvp).length();
-		//std::cout << range << "\n";
-		if (range > 50) range = 50;
+		std::cout << range << "\n";
+		if (range > 250) range = 250;
 		uniform->set(range);
 	}
 

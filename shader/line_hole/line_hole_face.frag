@@ -22,6 +22,7 @@ vec4 packFloatToRgba(float _value)
 void main()
 {
 	idTexture = v_id;
+	//idTexture = 0; //面的ID无效，为0
 	depthTexture = packFloatToRgba(gl_FragCoord.z);
 	FragColor = v_color;
 	linePtTexture = vec4(0);

@@ -177,7 +177,7 @@ void TwoDimManipulator::focusNode(osg::Node* geo)
 	boundingSphere.expandBy(bb);
 	_center.set(boundingSphere.center());
 
-	if(g_is_top_view)
+	if(g_is_top_view) //为了让视角往上偏移，以便看到全部
 		_center += osg::Z_AXIS * boundingSphere.radius();
 	else 
 		_center -= osg::Y_AXIS * boundingSphere.radius();

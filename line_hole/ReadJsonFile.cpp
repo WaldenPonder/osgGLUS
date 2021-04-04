@@ -138,7 +138,7 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 		{
 			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
 			osg::Geode* geode = new osg::Geode;
-			geode->setNodeMask(NM_LINE);
+			geode->setNodeMask(g_is_daoxian_file ? NM_CABLE : NM_LINE);
 			geode->addDrawable(geometry);
 			root->addChild(geode);
 			LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
@@ -187,7 +187,7 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 		{
 			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
 			osg::Geode* geode = new osg::Geode;
-			geode->setNodeMask(NM_LINE);
+			geode->setNodeMask(g_is_daoxian_file ? NM_CABLE : NM_LINE);
 			geode->addDrawable(geometry);
 			root->addChild(geode);
 			LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera());
@@ -214,12 +214,13 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 			allPTs.push_back(triangle.ThirdPoint);
 		}
 
-		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(184.0 / 255, 213. / 255., 220.0 / 255, 1) }, { id }, g_viewer->getCamera());
+		//osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(184.0 / 255, 213. / 255., 220.0 / 255, 1) }, { id }, g_viewer->getCamera());
+		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera());
 		osg::Geode* geode = new osg::Geode;
-		geode->setNodeMask(NM_FACE);
+		geode->setNodeMask(g_is_daoxian_file ? NM_QIAOJIA_JIDIANSHEBEI : NM_FACE);
 		geode->addDrawable(geometry);
 		root->addChild(geode);
-		geometry->setNodeMask(NM_FACE);
+		geometry->setNodeMask(g_is_daoxian_file ? NM_QIAOJIA_JIDIANSHEBEI : NM_FACE);
 
 		//越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
 		geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::FACE, "RenderBin"); //面
@@ -288,6 +289,7 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 	g_textureBuffer1 = LineHole::create_tbo(index1);
 	g_textureBuffer2 = LineHole::create_tbo(index2);
 
+#if 0
 	auto to_long = [&](int i) {
 		return IDMAP2[i];
 	};
@@ -307,7 +309,7 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 
 		cout << "\n\n";
 	}
-	//getchar();
+#endif
 	osg::ComputeBoundsVisitor cbbv;
 	rootNode->accept(cbbv);
 	g_line_bbox = cbbv.getBoundingBox();
