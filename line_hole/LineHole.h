@@ -36,11 +36,13 @@ extern bool g_always_dont_connected;
 extern bool g_always_intersection;
 extern bool g_is_daoxian_file;
 
+extern osg::ref_ptr<osg::Texture2D> g_idTexture1; //512*512, 用于加速范围查询
+
 struct RenderPass
 {
 	enum {
 		LINE_PASS,
-		FACE_PASS,
+		BACKGROUND_PASS,
 		CABLE_PASS
 	} type;
 	osg::Texture2D* baseColorTexture = nullptr;
@@ -51,7 +53,7 @@ struct RenderPass
 };
 
 extern RenderPass g_linePass;
-extern RenderPass g_facePass;
+extern RenderPass g_backgroundPass;
 extern RenderPass g_cablePass;
 
 #define NM_HUD (1 << 2)
@@ -62,7 +64,7 @@ extern RenderPass g_cablePass;
 #define NM_HIDE_OBJECT (1 << 7)
 #define NM_ALL (~0)
 #define NM_LINE_PASS_QUAD (1 << 8)
-#define NM_FACE_PASS_QUAD (1 << 9)
+#define NM_BACKGROUND_PASS_QUAD (1 << 9)
 #define NM_CABLE_PASS_QUAD (1 << 10)
 
 //导线 桥接  机电设备
@@ -106,6 +108,9 @@ public:
 
 	static void createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera_, osg::Geometry* screenQuat,
 		int priority, int mask, osg::ref_ptr<osg::Program> program, osgViewer::Viewer* viewer);
+
+	//生成不同分辨率的ID Texture, 加速范围查询
+	static osg::Camera* createIDPass();
 
 	//虚线
 	static void setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera);

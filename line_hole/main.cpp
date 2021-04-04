@@ -10,13 +10,14 @@
 #include "ConvexHullVisitor.h"
 
 RenderPass g_linePass;
-RenderPass g_facePass;
+RenderPass g_backgroundPass;
 RenderPass g_cablePass;
 
 osgViewer::Viewer* g_viewer;
 osg::ref_ptr <osg::MatrixTransform> g_sceneNode;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer1;
 osg::ref_ptr<osg::TextureBuffer>  g_textureBuffer2;
+osg::ref_ptr<osg::Texture2D> g_idTexture1; //512*512, 用于加速范围查询
 
 osg::ref_ptr<osg::Camera> g_hudCamera;
 
@@ -98,11 +99,11 @@ public:
 				else
 					g_linePass.rttCamera->setCullMask(mask | NM_FACE);
 
-				unsigned mask2 = g_facePass.rttCamera->getCullMask();
+				unsigned mask2 = g_backgroundPass.rttCamera->getCullMask();
 				if (mask2 & NM_FACE)
-					g_facePass.rttCamera->setCullMask(mask2 & ~NM_FACE);
+					g_backgroundPass.rttCamera->setCullMask(mask2 & ~NM_FACE);
 				else
-					g_facePass.rttCamera->setCullMask(mask2 | NM_FACE);
+					g_backgroundPass.rttCamera->setCullMask(mask2 | NM_FACE);
 			}
 			else if (ea.getKey() == 'h')
 			{
@@ -118,10 +119,10 @@ public:
 			else if (ea.getKey() == 'i')
 			{
 				unsigned mask = g_viewer->getCamera()->getCullMask();
-				if (mask & NM_FACE_PASS_QUAD)
-					g_viewer->getCamera()->setCullMask(mask & ~NM_FACE_PASS_QUAD);
+				if (mask & NM_BACKGROUND_PASS_QUAD)
+					g_viewer->getCamera()->setCullMask(mask & ~NM_BACKGROUND_PASS_QUAD);
 				else
-					g_viewer->getCamera()->setCullMask(mask | NM_FACE_PASS_QUAD);
+					g_viewer->getCamera()->setCullMask(mask | NM_BACKGROUND_PASS_QUAD);
 			}
 			else if (ea.getKey() == 'j')
 			{
@@ -252,29 +253,30 @@ int main()
 	setUp(viewer);
 
 	g_linePass.type = RenderPass::LINE_PASS;
-	g_facePass.type = RenderPass::FACE_PASS;
+	g_backgroundPass.type = RenderPass::BACKGROUND_PASS;
 	g_cablePass.type = RenderPass::CABLE_PASS;
 
 	LineHole::createRttCamera(&viewer, g_linePass);
-	LineHole::createRttCamera(&viewer, g_facePass);
+	LineHole::createRttCamera(&viewer, g_backgroundPass);
 	LineHole::createRttCamera(&viewer, g_cablePass);
 
-	g_root->addChild(g_facePass.rttCamera);
+	g_root->addChild(LineHole::createIDPass());
+	g_root->addChild(g_backgroundPass.rttCamera);
 	g_root->addChild(g_linePass.rttCamera);
 	g_root->addChild(g_cablePass.rttCamera);
-
+	
 	g_sceneNode = ReadJsonFile::createScene(g_elementRoot);
 
 	g_hudCamera = LineHole::createHudCamera(&viewer);
 	root->addChild(g_hudCamera);
 
 	g_linePass.rttCamera->addChild(g_sceneNode);
-	g_facePass.rttCamera->addChild(g_sceneNode);
+	g_backgroundPass.rttCamera->addChild(g_sceneNode);
 	g_cablePass.rttCamera->addChild(g_sceneNode);
 
 	g_linePass.rttCamera->setCullMask(NM_LINE | NM_OUT_LINE | NM_HIDDEN_LINE | NM_FACE);
 	//底图
-	g_facePass.rttCamera->setCullMask(NM_FACE);// | NM_QIAOJIA_JIDIANSHEBEI);
+	g_backgroundPass.rttCamera->setCullMask(NM_FACE);// | NM_QIAOJIA_JIDIANSHEBEI);
 	//导线pass, 不需要绘制隐藏线
 	g_cablePass.rttCamera->setCullMask(NM_CABLE | NM_QIAOJIA_JIDIANSHEBEI | NM_OUT_LINE);
 

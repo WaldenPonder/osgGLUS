@@ -5,6 +5,7 @@ uniform isampler2D idTexture;
 uniform sampler2D linePtTexture;
 uniform isamplerBuffer textureBuffer1;
 uniform isamplerBuffer textureBuffer2;
+uniform isampler2D idTexture1;
 
 uniform float u_out_range;
 uniform float u_inner_range;
@@ -142,6 +143,32 @@ vec4 packFloatToRgba(float _value)
 //texcoord的range范围内做查询，看看是不是需要打断
 bool range_search(vec2 texcoord,  float range, int id, vec2 text_size, float depth)
 {
+#if 0
+	float RANGE2 = ceil (range / 2.0);
+	
+	bool flag = false;
+	vec2 size = textureSize(idTexture1, 0);
+	
+	for(float i = -RANGE2; i <= RANGE2; i += 1)
+	{
+		if(flag) break;
+		for(float j = -RANGE2; j <= RANGE2; j += 1)
+		{
+			vec2 uv = texcoord + vec2(i / size.x, j / size.y);
+			int id2 = texture(idTexture1, uv).r;
+			
+			if(id2 != 0 && id2 != id)
+			{
+				flag = true; break;
+			}
+		}
+	}
+	
+	if(!flag) {
+		return false;
+	}
+#endif
+	
 	vec4 p1 = texture(linePtTexture, texcoord);
 	for(float i = -range; i <= range; i+= 1)
 	{
@@ -154,7 +181,7 @@ bool range_search(vec2 texcoord,  float range, int id, vec2 text_size, float dep
 				float val = unpackRgbaToFloat(texture(depthTexture, uv));
 				if(depth > val)  //深度比周围大，可能需要打断
 				{					
-					vec4 p2 = texture(linePtTexture, uv);
+					//vec4 p2 = texture(linePtTexture, uv);
 					//线线相交
 					//bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
 					//if(b1)
@@ -168,11 +195,6 @@ bool range_search(vec2 texcoord,  float range, int id, vec2 text_size, float dep
 	}
 	
 	return false;
-}
-
-vec2 uv_to_point(const vec2 uv)
-{
-	return uv * 2.0 - vec2(1.0);
 }
 
 //texcoord的range范围内做查询，看看是不是需要打断
@@ -264,10 +286,14 @@ void main()
 	
 	if(!u_line_hole_enable)
 	{
-		fragColor = baseColor; return;
+		fragColor = baseColor;
+		return;
+		int id = texture(idTexture1, texcoord).r;
+		fragColor = vec4(vec3(id / 100.0), 1);
+		return;
 	}
 	
-	int id = texture(idTexture, texcoord).r;	
+	int id = texture(idTexture, texcoord).r;
 	if(id == 0)   //id 无效，提前返回
 	{
 		fragColor = baseColor; 
@@ -286,12 +312,13 @@ void main()
 	#endif
 	
 	#if 0 //输出深度
-	baseColor = vec4(vec3(depth), 1);
+	fragColor = vec4(vec3(depth), 1);
+	return;
 	#endif
 	
 	#if 0 //输出ID
-	baseColor = vec4(vec3(id / 400.0), 1);
-	//return;
+	fragColor = vec4(vec3(id / 100.0), 1);
+	return;
 	#endif
 	
 	//导线pass, 不需要隐藏线， ID永远为正
