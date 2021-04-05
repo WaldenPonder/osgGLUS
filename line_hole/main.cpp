@@ -81,11 +81,17 @@ public:
 			}
 			else if (ea.getKey() == 'd')
 			{
-				osg::Camera* camera = g_linePass.rttCamera;
-				if (camera->getCullMask() & NM_HIDDEN_LINE)
-					camera->setCullMask(camera->getCullMask() & ~NM_HIDDEN_LINE);
+				//osg::Camera* camera = g_linePass.rttCamera;
+				//if (camera->getCullMask() & NM_HIDDEN_LINE)
+				//	camera->setCullMask(camera->getCullMask() & ~NM_HIDDEN_LINE);
+				//else
+				//	camera->setCullMask(camera->getCullMask() | NM_HIDDEN_LINE);
+
+				osg::Camera* camera = g_viewer->getCamera();
+				if (camera->getCullMask() & NM_ID_PASS_QUAD)
+					camera->setCullMask(camera->getCullMask() & ~NM_ID_PASS_QUAD);
 				else
-					camera->setCullMask(camera->getCullMask() | NM_HIDDEN_LINE);
+					camera->setCullMask(camera->getCullMask() | NM_ID_PASS_QUAD);
 			}
 			else if (ea.getKey() == 'e')
 			{

@@ -71,6 +71,8 @@ extern RenderPass g_cablePass;
 #define NM_CABLE (1 << 11)
 #define NM_QIAOJIA_JIDIANSHEBEI (1 << 12)
 
+#define NM_ID_PASS_QUAD (13)
+
 
 //越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
 namespace RenderPriority 

@@ -9,28 +9,37 @@ void main()
 {
 	vec2 delta = vec2(1) / textureSize(idTexture, 0);
 	
-	vec2 uv0 = texcoord;
-	vec2 uv1 = texcoord + vec2(delta.x, 0);
-	vec2 uv2 = texcoord + vec2(0, delta.y);
-	vec2 uv3 = texcoord + vec2(delta.x, delta.y);
+	int arr[64];
 	
-	int val0 = texture(idTexture, uv0).r;
-	int val1 = texture(idTexture, uv1).r;
-	int val2 = texture(idTexture, uv2).r;
-	int val3 = texture(idTexture, uv3).r;
-	
-	if(val0 == val1 && val1 == val2 && val2 == val3)
+	for(int i = 0; i < 8; i++)
 	{
-	   idOut = val0; 
+		for(int j = 0; j < 8; j++)
+		{
+			int index = i * 8 + j;
+			vec2 uv = texcoord + vec2(delta.x * i, delta.y * j);
+			arr[index] = texture(idTexture, uv).r;
+		}
+	}
+	
+	int pre = arr[0];
+	bool flag = false;
+	for(int i = 1; i < 64; i++)
+	{
+		if(pre != arr[i]) {
+			flag = true; break; 
+		}
+	}
+	
+	if(!flag)
+	{
+	   idOut = arr[0];
 	}
 	else
 	{ 
-	  ivec4 arr = ivec4(val0, val1, val2, val3);
-	    
 	  //对arr排序
-	  for(int i = 0; i < 4; i++)
+	  for(int i = 0; i < 64; i++)
 	  {
-		for(int j = i + 1; j < 4; j++)
+		for(int j = i + 1; j < 64; j++)
 		{
 			if(arr[j] < arr[i])
 			{
@@ -43,7 +52,7 @@ void main()
 	  
 	  int pre = 0;
 	  
-	  for(int i = 0; i < 4; i++)
+	  for(int i = 0; i < 64; i++)
 	  {
 		if(pre == 0)
 		{

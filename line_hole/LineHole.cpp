@@ -275,9 +275,9 @@ void LineHole::createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera
 osg::Camera* LineHole::createIDPass()
 {
 	osg::Camera* camera = new osg::Camera;
-
-	float w_ = 512;
-	float h_ = 512;
+	camera->setNodeMask(NM_ID_PASS_QUAD);
+	float w_ = 128;
+	float h_ = 128;
 
 	camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 	camera->setProjectionMatrixAsOrtho(0, w_, 0, h_, -1, 1);
@@ -294,6 +294,7 @@ osg::Camera* LineHole::createIDPass()
 	osg::ref_ptr<osg::Program> program = new osg::Program;
 
 	osg::Geode* geode = new osg::Geode;
+	geode->setNodeMask(NM_ID_PASS_QUAD);
 	osg::Geometry* screenQuat = createFinalHudTextureQuad(program, osg::Vec3(0, 0, -0.5), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
 	geode->addChild(screenQuat);
 	camera->addChild(geode);
