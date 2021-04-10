@@ -48,6 +48,7 @@ void parseGeometry(const Json::Value& value, Geometrys& geometry, int level)
 		LINE line;
 		parsePoint(value["StartPoint"], line.StartPoint);
 		parsePoint(value["EndPoint"], line.EndPoint);
+		line.Width = value["Width"].asInt();
 		geometry.lines.push_back(line);
 	}
 	else if (type == "Arc")
@@ -122,8 +123,73 @@ void ReadJsonFile::read(const std::string& fileName)
 	}
 }
 
-osg::Group* handleGeometry(const MEPElement& element, int id)
+void handleWideLine111(const MEPElement& element, int id, const LINE& line, std::vector<osg::Vec3>& wideLines)
 {
+	osg::Quat quat1(osg::PI_2f, osg::Z_AXIS);
+	osg::Quat quat2(-osg::PI_2f, osg::Z_AXIS);
+
+	osg::Vec3 v = line.EndPoint - line.StartPoint;
+	osg::Vec3 dir1 = quat1 * v;
+	osg::Vec3 dir2 = quat2 * v;
+
+	dir1.normalize();
+	dir2.normalize();
+
+	osg::Vec3 p1 = line.StartPoint + dir1 * line.Width;
+	osg::Vec3 p2 = line.StartPoint + dir2 * line.Width;
+
+	osg::Vec3 v2 = -v;
+	osg::Vec3 dir3 = quat2 * v2;
+	osg::Vec3 dir4 = quat1 * v2;
+
+	dir3.normalize();
+	dir4.normalize();
+
+	osg::Vec3 p3 = line.EndPoint + dir3 * line.Width;
+	osg::Vec3 p4 = line.EndPoint + dir4 * line.Width;
+
+	wideLines.push_back(p1);
+	wideLines.push_back(p3);
+	wideLines.push_back(p2);
+
+	wideLines.push_back(p2);
+	wideLines.push_back(p4);
+	wideLines.push_back(p3);
+
+	//std::reverse(allPTs.begin(), allPTs.end());
+	//osg::Geometry* geometry = LineHole::createTriangles(wideLines, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera());
+	//osgDB::writeNodeFile(*geometry, "F:\\aa.osg");
+	//wideLines.push_back(geometry);
+}
+
+void handleWideLine(const MEPElement& element, int id, const LINE& line, std::vector<osg::Vec3>& wideLines)
+{
+	osg::Quat quat1(osg::PI_2f, osg::Z_AXIS);
+	osg::Quat quat2(-osg::PI_2f, osg::Z_AXIS);
+
+	osg::Vec3 v = line.EndPoint - line.StartPoint;
+	v.normalize();
+
+	osg::Vec3 dir1 = osg::Vec3(-v.y(), v.x(), 0);
+
+	osg::Vec3 p1 = line.StartPoint + dir1 * line.Width;
+	osg::Vec3 p2 = line.StartPoint - dir1 * line.Width;
+
+	osg::Vec3 p3 = line.EndPoint + dir1 * line.Width;
+	osg::Vec3 p4 = line.EndPoint - dir1 * line.Width;
+
+	wideLines.push_back(p2);
+	wideLines.push_back(p3);
+	wideLines.push_back(p1);
+
+	wideLines.push_back(p2);
+	wideLines.push_back(p4);
+	wideLines.push_back(p3);
+}
+
+osg::Group* handleGeometry(MEPElement& element, int id)
+{
+	std::vector<osg::Vec3> wideLines;
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	//-----------------------------------------------------------line
 	{
@@ -131,10 +197,15 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 
 		for (auto& line : element.Geometry.lines)
 		{
+			if (line.Width > 5)
+			{
+				handleWideLine(element, id, line, wideLines);
+				continue;
+			}
 			allPTs.push_back(line.StartPoint);
 			allPTs.push_back(line.EndPoint);
 		}
-		
+
 		{
 			osg::Geometry* geometry = LineHole::createLine2(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera(), osg::PrimitiveSet::LINES);
 			osg::Geode* geode = new osg::Geode;
@@ -202,11 +273,25 @@ osg::Group* handleGeometry(const MEPElement& element, int id)
 		}
 	}
 
+	if (wideLines.size() && element.Geometry.triangles.size() == 0)
+	{
+		element.Geometry.triangles.resize(1);
+	}
+
+	for (int i = 0; i + 2 < wideLines.size(); i += 3)
+	{
+		TRIANGLE tri;
+		tri.FirstPoint = wideLines[i];
+		tri.SecondPoint = wideLines[i + 1];
+		tri.ThirdPoint = wideLines[i + 2];
+		element.Geometry.triangles[0].push_back(tri);
+	}
+
+	
 	//-----------------------------------------------------------triangle
-	for(auto& triangleArr : element.Geometry.triangles)
+	for (auto& triangleArr : element.Geometry.triangles)
 	{
 		std::vector<osg::Vec3> allPTs;
-
 		for (auto& triangle : triangleArr)
 		{
 			allPTs.push_back(triangle.FirstPoint);
@@ -299,13 +384,13 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 		auto& element = root.MEPElements[i];
 		cout << to_long(element.Id) << "  :  \n";
 
-		if(element.ConnectedElementId.empty())
+		if (element.ConnectedElementId.empty())
 			continue;
 
 		for (int j : element.ConnectedElementId)
 		{
 			cout << to_long(j) << "\n";
-		}
+}
 
 		cout << "\n\n";
 	}

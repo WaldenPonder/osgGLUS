@@ -162,6 +162,7 @@
   <ItemGroup>
     <ClInclude Include="ConvexHullVisitor.h" />
     <ClInclude Include="LineHole.h" />
+    <ClInclude Include="MyEventHandler.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ReadJsonFile.h" />
     <ClInclude Include="TwoDimManipulator.h" />

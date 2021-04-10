@@ -41,8 +41,7 @@ int orientation(osg::Vec2 p, osg::Vec2 q, osg::Vec2 r) {
 
 	float val2 = (q.x() - p.x()) * (r.y() - q.y());
 
-
-	// if (all(equal(vec2(val1 - val2, val2 - val1), vec2(0))))
+// if (all(equal(vec2(val1 - val2, val2 - val1), vec2(0))))
 		// return 0;  // colinear
 
 	if (abs(val1 - val2) < 0.0001) return 0;
@@ -375,4 +374,116 @@ osg::Node* LineHole::create_lines2(osgViewer::Viewer& view)
 	return root.release();
 }
 
+#endif
+
+
+
+#if 0
+std::map<int, vector<int>> temp_range;
+
+//不包含lo  hi
+void recalculat_range_i(int lo, int hi, int level, std::map<int, vector<int>>& temp_range)
+{
+	if (lo >= hi)
+		return;
+
+	if (hi - lo == 1)
+		return;
+
+	if (hi - lo == 2)
+	{
+		temp_range[level].push_back(hi - 1);
+		return;
+	}
+
+	int mid = (lo + hi) / 2;
+	temp_range[level].push_back(mid);
+
+	if (mid > lo)
+		recalculat_range_i(lo, mid, level + 1, temp_range);
+
+	if (mid < hi)
+		recalculat_range_i(mid, hi, level + 1, temp_range);
+}
+
+void recalculat_range_i()
+{
+	std::default_random_engine eng(time(nullptr));
+	std::uniform_int_distribution<int> rand(21, 10000);
+	int cnt = 0;
+	while (true)
+	{
+		g_current_range = rand(eng);
+
+		cin >> g_current_range;
+		std::queue<int> temp;
+		g_rang_i.swap(temp);
+
+		if (g_current_range <= 20)
+		{
+			g_rang_i.push(g_current_range);
+			continue;
+		}
+
+		g_rang_i.push(g_current_range);
+		g_rang_i.push(20);
+
+		std::map<int, vector<int>> temp_range;
+		recalculat_range_i(20, g_current_range, 0, temp_range);
+
+		for (size_t i = 0; i < temp_range.size(); i++)
+		{
+			vector<int> vec = temp_range[i];
+
+			int j = 0, k = vec.size() - 1;
+			int mid = (j + k) / 2;
+
+			if (mid == j || mid == k)
+			{
+				for (int& v : vec)
+					g_rang_i.push(v);
+				continue;
+			}
+
+			g_rang_i.push(vec[k]);
+			g_rang_i.push(vec[j]);
+			g_rang_i.push(vec[mid]);
+
+			while (j < mid)
+			{
+				j++;
+				if (j < mid)
+					g_rang_i.push(vec[j]);
+			}
+
+			while (k > mid)
+			{
+				k--;
+				if (k > mid)
+					g_rang_i.push(vec[k]);
+			}
+		}
+
+		if (g_rang_i.size() != (g_current_range - 20 + 1))
+		{
+			cout << "aaa\n";
+		}
+
+		set<int> tempSet;
+		//cout << cnt++ << "\t" << g_current_range << "\n";
+		cout << "\n\n--------------------------------------------------\n\n";
+		while (g_rang_i.size())
+		{
+			cout << g_rang_i.front() << "\n";
+			tempSet.insert(g_rang_i.front());
+			g_rang_i.pop();
+		}
+
+		if (tempSet.size() != g_current_range - 20 + 1)
+		{
+			cout << "bbb\n";
+		}
+	}
+
+}
 #endif

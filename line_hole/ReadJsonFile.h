@@ -8,6 +8,7 @@ struct LINE
 {
 	osg::Vec3 StartPoint;
 	osg::Vec3 EndPoint;
+	int Width;
 };
 
 struct ARC
@@ -15,6 +16,7 @@ struct ARC
 	osg::Vec3 StartPoint;
 	osg::Vec3 EndPoint;
 	osg::Vec3 Center;
+	int Width;
 };
 
 struct TRIANGLE
@@ -40,6 +42,16 @@ struct MEPElement
 	bool HasGeometry;
 	uint64_t Id;
 	string Name;
+	bool isParticipation;
+	bool isSymbol;
+
+	enum Type
+	{
+		QIAOJIA = 0, //桥架
+		DAOXIAN = 1, //导线
+		JIDIAN_SHEBEI = 2, //机电设备
+		OTHERS = 3, //其它  如 建筑、结构的构件以及机电水暖的线性构件 等
+	} type;
 };
 
 struct ElementGroup

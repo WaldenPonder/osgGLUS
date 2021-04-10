@@ -119,98 +119,56 @@ osg::ref_ptr<osg::TextureBuffer> LineHole::create_tbo(const vector<int>& data)
 	return tbo;
 }
 
-osg::Camera* LineHole::createHudCamera(osgViewer::Viewer* viewer)
+void LineHole::createHudCamera(osgViewer::Viewer* viewer)
 {
-	osg::Geode* geode_quat = nullptr;
 	osg::Geometry* screenQuat = nullptr;
-	osg::Camera* hud_camera_ = new osg::Camera;
-	hud_camera_->setNodeMask(NM_HUD);
+	g_hudCamera = new osg::Camera;
+	g_hudCamera->setNodeMask(NM_HUD);
 
 	float w_ = TEXTURE_SIZE1;
 	float h_ = TEXTURE_SIZE2;
 
-	hud_camera_->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-	hud_camera_->setProjectionMatrixAsOrtho(0, w_, 0, h_, -1, 1);
-	hud_camera_->setViewMatrix(osg::Matrix::identity());
-	hud_camera_->setRenderOrder(osg::Camera::POST_RENDER);
-	hud_camera_->setClearColor(CLEAR_COLOR);
-	hud_camera_->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	hud_camera_->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-
-	osg::Vec3 eye, center, up;
-	hud_camera_->getViewMatrixAsLookAt(eye, center, up);
-
-	osg::Camera* mainCamera = viewer->getCamera();
-	mainCamera->setClearColor(CLEAR_COLOR);
-	osg::Viewport* vp = mainCamera->getViewport();
-
-	//默认相机，视角沿z轴往下看，多张图，要先渲染远处的，才能得到正确结果
-
-#if 1 //面在下，先画
-	float faceZ = -0.5;
-	float lineZ = -0.3;
-	float cableZ = -0.2;
-
-	int backgroundQuatPriority = 3;
-	int lineQuatPriority = 5;
-	int cableQuatPriority = 6;
-#else//面在上，后画
-	float faceZ = -0.3;
-	float lineZ = -0.5;
-
-	int lineQuatPriority = 1;
-	int backgroundQuatPriority = 2;
-#endif
-
-	//-----------------------------------------------------------line
-	osg::ref_ptr<osg::Program> lineProgram = new osg::Program;
-	screenQuat = createFinalHudTextureQuad(lineProgram, osg::Vec3(0, 0, lineZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
-	createTextureQuad(g_linePass, hud_camera_, screenQuat, lineQuatPriority, NM_LINE_PASS_QUAD, lineProgram, viewer);
-
-	//-----------------------------------------------------------background
-	osg::ref_ptr<osg::Program> backgroundProgram = new osg::Program;
-	screenQuat = createFinalHudTextureQuad(backgroundProgram, osg::Vec3(0, 0, faceZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
-	createTextureQuad(g_backgroundPass, hud_camera_, screenQuat, backgroundQuatPriority, NM_BACKGROUND_PASS_QUAD, backgroundProgram, viewer);
-
-	//-----------------------------------------------------------cable
-	osg::ref_ptr<osg::Program> cableProgram = new osg::Program;
-	screenQuat = createFinalHudTextureQuad(cableProgram, osg::Vec3(0, 0, cableZ), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
-	createTextureQuad(g_cablePass, hud_camera_, screenQuat, cableQuatPriority, NM_CABLE_PASS_QUAD, cableProgram, viewer);
-
-	return hud_camera_;
+	g_hudCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	g_hudCamera->setProjectionMatrixAsOrtho(0, w_, 0, h_, -1, 1);
+	g_hudCamera->setViewMatrix(osg::Matrix::identity());
+	g_hudCamera->setRenderOrder(osg::Camera::POST_RENDER);
+	g_hudCamera->setClearColor(CLEAR_COLOR);
+	g_hudCamera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	g_hudCamera->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 }
 
-void LineHole::createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera_, osg::Geometry* screenQuat,
-	int priority, int mask, osg::ref_ptr<osg::Program> program, osgViewer::Viewer* viewer)
+osg::Geode* LineHole::createTextureQuad(const TextureQuadParam& param)
 {
-	osg::Geode* geode_quat = new osg::Geode;
-	geode_quat->setNodeMask(mask);
-	hud_camera_->addChild(geode_quat);
+	RenderPass pass = param.pass;
+	osg::Camera* hud_camera_ = param.camera;
+	osg::Geometry* screenQuat = param.geom;
+	osg::ref_ptr<osg::Program> program = param.program;
+
+	osgViewer::Viewer* viewer = g_viewer;
+	osg::Geode* geode = new osg::Geode;
+	geode->setNodeMask(param.nodeMask);
+	hud_camera_->addChild(geode);
 	screenQuat->setUseVertexBufferObjects(true);
-	geode_quat->addChild(screenQuat);
-	//geode_quat->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-	geode_quat->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+	geode->addChild(screenQuat);
+	geode->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
 	screenQuat->setDataVariance(osg::Object::DYNAMIC);
 	screenQuat->setSupportsDisplayList(false);
 
-	osg::StateSet* ss = geode_quat->getOrCreateStateSet();
-	ss->setTextureAttributeAndModes(0, pass.baseColorTexture, osg::StateAttribute::ON);
+	osg::StateSet* ss = geode->getOrCreateStateSet();
+	ss->setTextureAttributeAndModes(0, param.inputTexture, osg::StateAttribute::ON);
 	ss->setTextureAttributeAndModes(1, pass.depthTexture, osg::StateAttribute::ON);
 	ss->setTextureAttributeAndModes(2, pass.idTexture, osg::StateAttribute::ON);
 	ss->setTextureAttributeAndModes(3, pass.linePtTexture, osg::StateAttribute::ON);
+	ss->setTextureAttributeAndModes(4, g_textureBuffer1, osg::StateAttribute::ON);
+	ss->setTextureAttributeAndModes(5, g_textureBuffer2, osg::StateAttribute::ON);
+	//ss->setTextureAttributeAndModes(6, g_texture1, osg::StateAttribute::ON);
+	//ss->setTextureAttributeAndModes(7, g_texture2, osg::StateAttribute::ON);
 
-	if (pass.type == RenderPass::LINE_PASS || pass.type == RenderPass::CABLE_PASS)
-	{
-		ss->setTextureAttributeAndModes(4, g_textureBuffer1, osg::StateAttribute::ON);
-		ss->setTextureAttributeAndModes(5, g_textureBuffer2, osg::StateAttribute::ON);
-		ss->setTextureAttributeAndModes(6, g_idTexture1, osg::StateAttribute::ON);		
-	}
-
-	ss->setRenderBinDetails(priority, "RenderBin");
+	ss->setRenderBinDetails(param.priority, "RenderBin");
 	ss->setAttributeAndModes(new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA));
 
-	if (pass.type == RenderPass::LINE_PASS || pass.type == RenderPass::BACKGROUND_PASS)
+	if (pass.type == RenderPass::LINE_PASS)
 	{
 		osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/line_hole_quad.vert");
 		osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/line_hole_quad.frag");
@@ -218,7 +176,7 @@ void LineHole::createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera
 		program->addShader(vert);
 		program->addShader(frag);
 	}
-	else
+	else if (pass.type == RenderPass::CABLE_PASS)
 	{
 		osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/cable_pass_quad.vert");
 		osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/cable_pass_quad.frag");
@@ -233,89 +191,107 @@ void LineHole::createTextureQuad(const RenderPass& pass, osg::Camera* hud_camera
 	ss->addUniform(new osg::Uniform("linePtTexture", 3));
 	ss->addUniform(new osg::Uniform("textureBuffer1", 4));
 	ss->addUniform(new osg::Uniform("textureBuffer2", 5));
-	ss->addUniform(new osg::Uniform("idTexture1", 6));
+	//ss->addUniform(new osg::Uniform("idTexture1", 6));
+	//ss->addUniform(new osg::Uniform("idTexture2", 7));
 
 	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
 	u_MVP->setUpdateCallback(new MVPCallback(hud_camera_));
 	ss->addUniform(u_MVP);
 
-	if (pass.type == RenderPass::LINE_PASS || pass.type == RenderPass::CABLE_PASS)
-	{
-		osg::Uniform* range3 = new osg::Uniform(osg::Uniform::BOOL, "u_line_hole_enable");
-		range3->setUpdateCallback(new LineHoleCallback(viewer->getCamera()));
-		ss->addUniform(range3);
+	osg::Uniform* u_line_hole_enable = new osg::Uniform(osg::Uniform::BOOL, "u_line_hole_enable");
+	u_line_hole_enable->setUpdateCallback(new LineHoleCallback(viewer->getCamera()));
+	ss->addUniform(u_line_hole_enable);
 
-		osg::Uniform* range = new osg::Uniform(osg::Uniform::FLOAT, "u_out_range");
-		range->setUpdateCallback(new OutRangeCallback(viewer->getCamera()));
-		ss->addUniform(range);
+	osg::Uniform* u_out_range = new osg::Uniform(osg::Uniform::FLOAT, "u_out_range");
+	u_out_range->setUpdateCallback(new OutRangeCallback(viewer->getCamera()));
+	ss->addUniform(u_out_range);
 
-		osg::Uniform* range2 = new osg::Uniform(osg::Uniform::FLOAT, "u_inner_range");
-		range2->setUpdateCallback(new InnerRangeCallback(viewer->getCamera()));
-		ss->addUniform(range2);
+	osg::Uniform* u_inner_range = new osg::Uniform(osg::Uniform::FLOAT, "u_inner_range");
+	u_inner_range->setUpdateCallback(new InnerRangeCallback(viewer->getCamera()));
+	ss->addUniform(u_inner_range);
 
-		osg::Uniform* range4 = new osg::Uniform(osg::Uniform::BOOL, "u_always_dont_connected");
-		range4->setUpdateCallback(new AlwaysDontConnectedCallback);
-		ss->addUniform(range4);
+	osg::Uniform* u_always_dont_connected = new osg::Uniform(osg::Uniform::BOOL, "u_always_dont_connected");
+	u_always_dont_connected->setUpdateCallback(new AlwaysDontConnectedCallback);
+	ss->addUniform(u_always_dont_connected);
 
-		osg::Uniform* range5 = new osg::Uniform(osg::Uniform::BOOL, "u_always_intersection");
-		range5->setUpdateCallback(new AlwaysIntersectionCallback);
-		ss->addUniform(range5);
-	}
-	else if (pass.type == RenderPass::BACKGROUND_PASS)
-	{
-		//底图pass, 不需要退让
-		osg::Uniform* range3 = new osg::Uniform(osg::Uniform::BOOL, "u_line_hole_enable");
-		range3->set(false);
-		ss->addUniform(range3);
-	}
+	osg::Uniform* u_always_intersection = new osg::Uniform(osg::Uniform::BOOL, "u_always_intersection");
+	u_always_intersection->setUpdateCallback(new AlwaysIntersectionCallback);
+	ss->addUniform(u_always_intersection);
+
+	osg::Uniform* u_rang_i = new osg::Uniform(osg::Uniform::INT, "u_rang_i");
+	u_rang_i->setUpdateCallback(new RangeICallback);
+	ss->addUniform(u_rang_i);
 
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
+
+	return geode;
 }
 
-osg::Camera* LineHole::createIDPass()
+void LineHole::processTexture(const RenderPass& pass, TextureFrameByFrame& frameTexture, int nodeMask, int priority, osg::Texture2D* inputTexture)
 {
-	osg::Camera* camera = new osg::Camera;
-	camera->setNodeMask(NM_ID_PASS_QUAD);
-	float w_ = 128;
-	float h_ = 128;
+	float w = TEXTURE_SIZE1;
+	float h = TEXTURE_SIZE2;
 
+	osg::Camera* camera = new osg::Camera;
+	g_root->addChild(camera);
+	
 	camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-	camera->setProjectionMatrixAsOrtho(0, w_, 0, h_, -1, 1);
-	camera->setViewport(0, 0, w_, h_);
+	camera->setProjectionMatrixAsOrtho(0, w, 0, h, -1, 1);
+	camera->setViewport(0, 0, w, h);
 	camera->setViewMatrix(osg::Matrix::identity());
-	camera->setRenderOrder(osg::Camera::POST_RENDER);
+	camera->setRenderOrder(osg::Camera::PRE_RENDER);
 	camera->setClearColor(CLEAR_COLOR);
 	camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
 
-	g_idTexture1 = create_id_texture(w_, h_);
-	camera->attach(osg::Camera::COLOR_BUFFER0, g_idTexture1, 0, 0, false);
+	osg::Texture2D* outTexture = create_texture();
+	camera->attach(osg::Camera::COLOR_BUFFER0, outTexture, 0, 0, false);
+	frameTexture.camera = camera;
+	frameTexture.texture = outTexture;
 
 	osg::ref_ptr<osg::Program> program = new osg::Program;
+	osg::Geometry* screenQuad = createHudTextureQuad(program, osg::Vec3(0, 0, -0.5), osg::Vec3(w, 0, 0), osg::Vec3(0, h, 0));
+	
+	//它要先渲染
+	TextureQuadParam param;
+	param.pass = pass;
+	param.camera = camera;
+	param.geom = screenQuad;
+	param.priority = priority;
+	param.nodeMask = nodeMask;
+	param.inputTexture = inputTexture;
+	param.program = program;
+	frameTexture.geode = createTextureQuad(param);
+}
 
+osg::Geode* LineHole::displayTextureInHudCamera(const osg::ref_ptr<osg::Texture2D>& inputTexture, const osg::Vec3& pos, int priority, int nodeMask /*= NM_ALL*/)
+{
+	osg::ref_ptr<osg::Program> program = new osg::Program;
 	osg::Geode* geode = new osg::Geode;
-	geode->setNodeMask(NM_ID_PASS_QUAD);
-	osg::Geometry* screenQuat = createFinalHudTextureQuad(program, osg::Vec3(0, 0, -0.5), osg::Vec3(w_, 0, 0), osg::Vec3(0, h_, 0));
-	geode->addChild(screenQuat);
-	camera->addChild(geode);
+	osg::Geometry* geom = createHudTextureQuad(program, pos, osg::Vec3(TEXTURE_SIZE1, 0, 0), osg::Vec3(0, TEXTURE_SIZE2, 0));
+	geom->setDataVariance(osg::Object::DYNAMIC);
+	geom->setSupportsDisplayList(false);
+	geode->addChild(geom);
+	geode->setNodeMask(nodeMask);
+	g_hudCamera->addChild(geode);
 
 	osg::StateSet* ss = geode->getOrCreateStateSet();
-	ss->setRenderBinDetails(1, "RenderBin");
-	ss->addUniform(new osg::Uniform("idTexture", 0));
-	ss->setTextureAttributeAndModes(0, g_cablePass.idTexture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
-
-	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
-	u_MVP->setUpdateCallback(new MVPCallback(camera));
-	ss->addUniform(u_MVP);
-
-	osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/id_pass.vert");
-	osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/id_pass.frag");
+	osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/simple_texture.vert");
+	osg::Shader* frag = osgDB::readShaderFile(osg::Shader::FRAGMENT, shader_dir() + "/line_hole/simple_texture.frag");
 
 	program->addShader(vert);
 	program->addShader(frag);
 	ss->setAttributeAndModes(program, osg::StateAttribute::ON);
+	ss->setMode(GL_BLEND, osg::StateAttribute::ON);
+	ss->setAttributeAndModes(new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA));
+	ss->setRenderBinDetails(priority, "RenderBin");
 
-	return camera;
+	osg::Uniform* u_MVP(new osg::Uniform(osg::Uniform::FLOAT_MAT4, "u_MVP"));
+	u_MVP->setUpdateCallback(new MVPCallback(g_hudCamera));
+	ss->addUniform(u_MVP);
+	ss->addUniform(new osg::Uniform("baseTexture", 0));
+	ss->setTextureAttributeAndModes(0, inputTexture, osg::StateAttribute::ON);
+	return geode;
 }
 
 void LineHole::setUpHiddenLineStateset(osg::StateSet* ss, osg::Camera* camera)
@@ -374,7 +350,7 @@ void LineHole::setUpStateset(osg::StateSet* ss, osg::Camera* camera, bool isLine
 	}
 }
 
-osg::Geometry* LineHole::createFinalHudTextureQuad(osg::ref_ptr<osg::Program> program, const osg::Vec3& corner,
+osg::Geometry* LineHole::createHudTextureQuad(osg::ref_ptr<osg::Program> program, const osg::Vec3& corner,
 	const osg::Vec3& widthVec, const osg::Vec3& heightVec, float l /*= 0*/, float b /*= 0*/, float r /*= 1*/, float t /*= 1*/)
 {
 	using namespace osg;
@@ -515,7 +491,7 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	geom->setVertexAttribBinding(2, osg::Geometry::BIND_PER_VERTEX);
 	program->addBindAttribLocation("a_id", 2);
 
-	osg::DrawArrays* drawArray = new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, allPTs.size() / 3);
+	osg::DrawArrays* drawArray = new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, allPTs.size());
 	geom->addPrimitiveSet(drawArray);
 
 	osg::Shader* vert = osgDB::readShaderFile(osg::Shader::VERTEX, shader_dir() + "/line_hole/line_hole_face.vert");
@@ -537,6 +513,10 @@ osg::Geometry* LineHole::createTriangles(const std::vector<osg::Vec3>& allPTs, c
 	//osg::PolygonOffset* offset = new osg::PolygonOffset(1, 1);
 	//ss->setAttributeAndModes(offset, osg::StateAttribute::ON);
 
+	ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+
+	osg::ref_ptr<osg::CullFace> cullface = new osg::CullFace(osg::CullFace::FRONT_AND_BACK);
+	ss->setAttributeAndModes(cullface, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 	return geom;
 }
 

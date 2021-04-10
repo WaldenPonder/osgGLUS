@@ -49,6 +49,8 @@ TwoDimManipulator::~TwoDimManipulator()
 {
 }
 
+static osg::Matrixd pre_view_matrix;
+static osg::Matrixd pre_projection_matrix;
 
 osg::Matrixd TwoDimManipulator::getMatrix() const
 {
@@ -76,6 +78,17 @@ osg::Matrixd TwoDimManipulator::getInverseMatrix() const
 
 	mat.makeLookAt(eye, _center, up);
 
+	if (pre_view_matrix != getCamera()->getViewMatrix())
+	{
+		g_is_need_recalculate_range = true;
+		pre_view_matrix = getCamera()->getViewMatrix();
+	}
+
+	if (pre_projection_matrix != getCamera()->getProjectionMatrix())
+	{
+		g_is_need_recalculate_range = true;
+		pre_projection_matrix = getCamera()->getProjectionMatrix();
+	}
 	return mat;
 }
 
@@ -96,7 +109,6 @@ void TwoDimManipulator::setByInverseMatrix(const osg::Matrixd& matrix)
 void TwoDimManipulator::home(double)
 {
 	if (!_viewer || !g_mouseBoxPat) return;
-
 	focusNode(g_sceneNode);
 }
 
@@ -104,7 +116,7 @@ bool TwoDimManipulator::handleMousePush(const osgGA::GUIEventAdapter& ea, osgGA:
 {
 	_preMousePt = osg::Vec2(ea.getX(), ea.getY());
 	_buttonType = ea.getButton();
-
+	
 	return __super::handleMousePush(ea, us);
 }
 
@@ -156,7 +168,6 @@ bool TwoDimManipulator::handleMouseWheel(const osgGA::GUIEventAdapter& ea, osgGA
 		else if (ea.getScrollingMotion() == osgGA::GUIEventAdapter::SCROLL_DOWN)
 		{
 			_distance *= (1.0 + factor);
-
 			_center += ((_center - mousePt) * factor);
 			bHandle = true;
 		}

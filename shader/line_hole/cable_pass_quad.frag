@@ -6,6 +6,7 @@ uniform sampler2D linePtTexture;
 uniform isamplerBuffer textureBuffer1;
 uniform isamplerBuffer textureBuffer2;
 uniform isampler2D idTexture1;
+uniform isampler2D idTexture2;
 
 uniform float u_out_range;
 uniform float u_inner_range;
@@ -13,19 +14,15 @@ uniform float u_inner_range;
 uniform bool u_line_hole_enable;
 uniform bool u_always_dont_connected; //连接关系  测试用
 uniform bool u_always_intersection; //判断连接时，永远相交， 测试用
+uniform int u_rang_i;
 
 in vec2 texcoord;
 out vec4 fragColor;
 
 vec4 baseColor;
 
-bool is_equal(in vec4 v1, in vec4 v2)
-{
-	return all(equal(v1, v2));
-}
-
 //与遍历id1 相连接的所以对象，查看id2是否在其中
-bool is_connected(int id1, int id2)
+bool is_connected(int id1, int id2) //TODO ： 当范围比较大时，这个其实挺消耗的
 {
 	if(u_always_dont_connected)
 		return false;
@@ -37,7 +34,7 @@ bool is_connected(int id1, int id2)
 
 	if(index == 0)
 		return false;
-
+	
 	while(true)
 	{
 		int index2 = texelFetch(textureBuffer2, index).r;
@@ -140,67 +137,84 @@ vec4 packFloatToRgba(float _value)
 	return comp;
 }
 
+bool range_search_this_uv(vec2 texcoord, vec2 uv, float range, int id, vec2 text_size, float depth)
+{
+	int id2 = texture(idTexture, uv).r;
+	if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
+	{
+		float val = unpackRgbaToFloat(texture(depthTexture, uv));
+		if(depth > val)  //深度比周围大，可能需要打断
+		{
+			//vec4 p2 = texture(linePtTexture, uv);
+			//线线相交
+			//bool b1 = (p1 != vec4(0)) && (p2 != vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
+			//if(b1)
+			{
+			    baseColor = vec4(0);
+				return true;
+			}
+		}
+	}
+	
+	return false;
+}
 
 //texcoord的range范围内做查询，看看是不是需要打断
+//todo: 限制在圆形区域内
+//todo: 超出屏幕空间的不计算
 bool range_search(vec2 texcoord,  float range, int id, vec2 text_size, float depth)
 {
-#if 1
-	if(u_line_hole_enable)
+    if(range <= 20 || u_rang_i == 20)
 	{
-		float RANGE2 = ceil (range / 8.0);
-
-		bool flag = false;
-		vec2 size = textureSize(idTexture1, 0);
-
-		for(float i = -RANGE2; i <= RANGE2; i += 1)
-		{
-			if(flag) break;
-			for(float j = -RANGE2; j <= RANGE2; j += 1)
-			{
-				vec2 uv = texcoord + vec2(i / size.x, j / size.y);
-				int id2 = texture(idTexture1, uv).r;
-
-				if(id2 != 0 && id2 != id)
-				{
-					flag = true;
-					break;
-				}
-			}
+	    if(range > 20) range = 20;
+		
+		while(range > 0)
+		{	
+		   for(float i = -range; i <= range; i+= 1)
+		   {	      
+			   //up line    这种水平  竖直交替查找，不知道能不能快点
+			   vec2 uv = texcoord + vec2(i / text_size.x, range / text_size.y);
+			   if(range_search_this_uv(texcoord, uv, range, id, text_size, depth)) return true;
+			   
+				//left line
+			   vec2 uv3 = texcoord + vec2((-range) / text_size.x, i / text_size.y);
+			   if(range_search_this_uv(texcoord, uv3, range, id, text_size, depth)) return true;
+			   
+			   //bottom line
+			   vec2 uv2 = texcoord + vec2( i / text_size.x, -range / text_size.y );
+			   if( range_search_this_uv(texcoord, uv2, range, id, text_size, depth )) return true;				
+			   //right line
+			   vec2 uv4 = texcoord + vec2(-range / text_size.x, i / text_size.y);
+			   if(range_search_this_uv(texcoord, uv4, range, id, text_size, depth)) return true;
+		   }
+		   range -= 1;
 		}
-
-		if(!flag)
-		{
-			return false;
-		}
+		//return;		
 	}
-#endif
-    
-	return false;
-	vec4 p1 = texture(linePtTexture, texcoord);
-	for(float i = -range; i <= range; i+= 1)
+	else
 	{
-		for(float j = -range; j <= range; j += 1)
-		{
-			vec2 uv = texcoord + vec2(i / text_size.x, j / text_size.y);
-			int id2 = texture(idTexture, uv).r;
-			if(id2 > 0 && id != id2 && !is_connected(id2, id)) //连接判断
-			{
-				float val = unpackRgbaToFloat(texture(depthTexture, uv));
-				if(depth > val)  //深度比周围大，可能需要打断
-				{
-					//vec4 p2 = texture(linePtTexture, uv);
-					//线线相交
-					//bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
-					//if(b1)
-					{
-						baseColor = vec4(0);
-						return true;
-					}
-				}
-			}
-		}
+		//baseColor = vec4(0, 0, 1, 1);
+		float range2 = u_rang_i;
+	    //只查找外轮廓， 分多次查找
+		for(float i = -range2; i <= range2; i+= 1)
+	   {	      
+		   //up line
+		   vec2 uv = texcoord + vec2(i / text_size.x, range2 / text_size.y);
+		   if(range_search_this_uv(texcoord, uv, range2, id, text_size, depth)) return true;
+		   
+			//left line
+		   vec2 uv3 = texcoord + vec2((-range2) / text_size.x, i / text_size.y);
+		   if(range_search_this_uv(texcoord, uv3, range2, id, text_size, depth)) return true;
+		   
+		   //bottom line
+		   vec2 uv2 = texcoord + vec2( i / text_size.x, -range2 / text_size.y );
+		   if( range_search_this_uv(texcoord, uv2, range2, id, text_size, depth ))return true;				
+		   //right line
+		   vec2 uv4 = texcoord + vec2(-range2 / text_size.x, i / text_size.y);
+		   if(range_search_this_uv(texcoord, uv4, range2, id, text_size, depth)) return true;
+	   }
 	}
-
+	
 	return false;
 }
 
@@ -216,7 +230,7 @@ bool perpendicular_search(const vec4 lineOrig, const float origLen, const float 
 		float len = length(p2.xy - p2.zw);
 
 		//附近有面的情况
-		if(is_equal(p2, vec4(0)))
+		if(p2 == vec4(0))
 		{
 			break_by_face++;
 		}
@@ -225,7 +239,7 @@ bool perpendicular_search(const vec4 lineOrig, const float origLen, const float 
 			if(len < origLen)  //短线打断长线
 			{
 				//线线相交
-				bool b1 = !is_equal(p1, vec4(0)) && !is_equal(p2, vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
+				bool b1 = (p1 != vec4(0)) && (p2 != vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
 				if(b1)
 				{
 					//如果要丢弃的点为交点， 则交点要用另一条线的颜色补, 不然会漏出一个缝隙
@@ -241,17 +255,18 @@ bool perpendicular_search(const vec4 lineOrig, const float origLen, const float 
 				}
 			}
 		}
-
-
 	}
 	return false;
 }
 
-bool is_need_break(float range, int id, vec2 text_size, float depth)
+bool do_line_break(float range, int id, vec2 text_size, float depth)
 {
-	return range_search(texcoord, range, id, text_size, depth);
-
 	vec4 lineOrig = texture(linePtTexture, texcoord);
+	//如果是三角面
+	if(lineOrig == vec4(0))  return false;
+		//return range_search(texcoord, range, id, text_size, depth);
+	
+
 	vec2 dir = normalize(lineOrig.xy - lineOrig.zw);
 	float origLen = length(lineOrig.xy - lineOrig.zw);
 	//沿着直线两侧查找
@@ -277,7 +292,7 @@ bool is_need_break(float range, int id, vec2 text_size, float depth)
 
 		if(perpendicular_search(lineOrig, origLen, i, uv4,  id, text_size, depth, break_by_face))
 			return true;
-
+			
 		if(break_by_face >= 1) //被机电设备或桥架打断
 		{
 			baseColor = vec4(0);
@@ -290,16 +305,12 @@ bool is_need_break(float range, int id, vec2 text_size, float depth)
 void main()
 {
 	baseColor = texture(baseTexture, texcoord);
-
-	// if(!u_line_hole_enable)
-	// {
-	// fragColor = baseColor;
-	// return;
-	// int id = texture(idTexture1, texcoord).r;
-	// fragColor = vec4(vec3(id / 100.0), 1);
-	// return;
-	// }
-
+	if(!u_line_hole_enable || baseColor.a == 0)
+	{
+		fragColor = baseColor;
+		return;
+	}
+	
 	int id = texture(idTexture, texcoord).r;
 	if(id == 0)   //id 无效，提前返回
 	{
@@ -310,32 +321,10 @@ void main()
 	vec2 text_size = textureSize(depthTexture, 0);
 	float depth = unpackRgbaToFloat(texture(depthTexture, texcoord));
 
-#if 0 //输出方向
-	// vec4 p2 = texture(linePtTexture, texcoord);
-	// vec2 dir = p2.zw;//normalize(p2.xy - p2.zw);
-	// fragColor = vec4(abs(dir), 0, 1);
-	fragColor = vec4(abs(uv_to_point(texcoord)), 0, 1);
-	return;
-#endif
-
-#if 0 //输出深度
-	fragColor = vec4(vec3(depth), 1);
-	return;
-#endif
-
-#if 0 //输出ID
-	fragColor = vec4(vec3(id / 100.0), 1);
-	return;
-#endif
-
 	//导线pass, 不需要隐藏线， ID永远为正
 	float range = int(u_out_range);
-	if(is_need_break(range, id, text_size, depth))
-	{
-		fragColor = baseColor;
-		return;
-	}
-
+	do_line_break(range, id, text_size, depth);
+	
 	fragColor = baseColor;
 }
 
