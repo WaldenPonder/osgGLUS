@@ -119,54 +119,15 @@ void ReadJsonFile::read(const std::string& fileName)
 		element.HasGeometry = ELEMENT["HasGeometry"].asBool();
 		element.Id = ELEMENT["Id"].asUInt64();
 		element.Name = ELEMENT["Name"].asString();
+		element.isParticipation = ELEMENT["IsParticipation"].asBool();
+		element.isSymbol = ELEMENT["IsSymbol"].asBool();
+		element.type = (MEPElement::Type)ELEMENT["Type"].asInt();
 		g_elementRoot.MEPElements.push_back(element);
 	}
 }
 
-void handleWideLine111(const MEPElement& element, int id, const LINE& line, std::vector<osg::Vec3>& wideLines)
-{
-	osg::Quat quat1(osg::PI_2f, osg::Z_AXIS);
-	osg::Quat quat2(-osg::PI_2f, osg::Z_AXIS);
-
-	osg::Vec3 v = line.EndPoint - line.StartPoint;
-	osg::Vec3 dir1 = quat1 * v;
-	osg::Vec3 dir2 = quat2 * v;
-
-	dir1.normalize();
-	dir2.normalize();
-
-	osg::Vec3 p1 = line.StartPoint + dir1 * line.Width;
-	osg::Vec3 p2 = line.StartPoint + dir2 * line.Width;
-
-	osg::Vec3 v2 = -v;
-	osg::Vec3 dir3 = quat2 * v2;
-	osg::Vec3 dir4 = quat1 * v2;
-
-	dir3.normalize();
-	dir4.normalize();
-
-	osg::Vec3 p3 = line.EndPoint + dir3 * line.Width;
-	osg::Vec3 p4 = line.EndPoint + dir4 * line.Width;
-
-	wideLines.push_back(p1);
-	wideLines.push_back(p3);
-	wideLines.push_back(p2);
-
-	wideLines.push_back(p2);
-	wideLines.push_back(p4);
-	wideLines.push_back(p3);
-
-	//std::reverse(allPTs.begin(), allPTs.end());
-	//osg::Geometry* geometry = LineHole::createTriangles(wideLines, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera());
-	//osgDB::writeNodeFile(*geometry, "F:\\aa.osg");
-	//wideLines.push_back(geometry);
-}
-
 void handleWideLine(const MEPElement& element, int id, const LINE& line, std::vector<osg::Vec3>& wideLines)
 {
-	osg::Quat quat1(osg::PI_2f, osg::Z_AXIS);
-	osg::Quat quat2(-osg::PI_2f, osg::Z_AXIS);
-
 	osg::Vec3 v = line.EndPoint - line.StartPoint;
 	v.normalize();
 
@@ -287,7 +248,6 @@ osg::Group* handleGeometry(MEPElement& element, int id)
 		element.Geometry.triangles[0].push_back(tri);
 	}
 
-	
 	//-----------------------------------------------------------triangle
 	for (auto& triangleArr : element.Geometry.triangles)
 	{
@@ -325,12 +285,10 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 		});
 
 	unordered_map<uint64_t, int> IDMAP;//长ID到短ID的映射
-	unordered_map<int, uint64_t> IDMAP2; //短到长的映射
 	for (int i = 0; i < root.MEPElements.size(); i++)
 	{
 		auto& ELEMENT = root.MEPElements[i];
-		IDMAP[ELEMENT.Id] = i + 20;
-		IDMAP2[i + 20] = ELEMENT.Id;
+		IDMAP[ELEMENT.Id] = i + 20; //id 从20开始, 0 为无效ID， 1代表不参与， 其余的是预留的
 	}
 
 	//把Id  ConnectedElementId都变成短的ID
@@ -347,7 +305,10 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 			id = IDMAP[id];
 		}
 
-		elementGroup->addChild(handleGeometry(element, element.Id));
+		if (element.isParticipation)
+			elementGroup->addChild(handleGeometry(element, element.Id));
+		else
+			elementGroup->addChild(handleGeometry(element, 1));
 	}
 
 	vector<int> index1(root.MEPElements.size() + 100);
@@ -374,27 +335,6 @@ osg::MatrixTransform* ReadJsonFile::createScene(ElementGroup& root)
 	g_textureBuffer1 = LineHole::create_tbo(index1);
 	g_textureBuffer2 = LineHole::create_tbo(index2);
 
-#if 0
-	auto to_long = [&](int i) {
-		return IDMAP2[i];
-	};
-
-	for (int i = 0; i < root.MEPElements.size(); i++)
-	{
-		auto& element = root.MEPElements[i];
-		cout << to_long(element.Id) << "  :  \n";
-
-		if (element.ConnectedElementId.empty())
-			continue;
-
-		for (int j : element.ConnectedElementId)
-		{
-			cout << to_long(j) << "\n";
-}
-
-		cout << "\n\n";
-	}
-#endif
 	osg::ComputeBoundsVisitor cbbv;
 	rootNode->accept(cbbv);
 	g_line_bbox = cbbv.getBoundingBox();
