@@ -119,9 +119,22 @@ void ReadJsonFile::read(const std::string& fileName)
 		element.HasGeometry = ELEMENT["HasGeometry"].asBool();
 		element.Id = ELEMENT["Id"].asUInt64();
 		element.Name = ELEMENT["Name"].asString();
-		element.isParticipation = ELEMENT["IsParticipation"].asBool();
-		element.isSymbol = ELEMENT["IsSymbol"].asBool();
-		element.type = (MEPElement::Type)ELEMENT["Type"].asInt();
+
+		if (ELEMENT.isMember("IsParticipation"))
+			element.isParticipation = ELEMENT["IsParticipation"].asBool();
+		else
+			element.isParticipation = true;
+
+		if (ELEMENT.isMember("IsSymbol"))
+			element.isSymbol = ELEMENT["IsSymbol"].asBool();
+		else
+			element.isSymbol = false;
+
+		if (ELEMENT.isMember("IsSymbol"))
+			element.type = (MEPElement::Type)ELEMENT["Type"].asInt();
+		else
+			element.type = MEPElement::OTHERS;
+
 		g_elementRoot.MEPElements.push_back(element);
 	}
 }
@@ -234,9 +247,11 @@ osg::Group* handleGeometry(MEPElement& element, int id)
 		}
 	}
 
+	bool isWideLine = false;
 	if (wideLines.size() && element.Geometry.triangles.size() == 0)
 	{
 		element.Geometry.triangles.resize(1);
+		isWideLine = true;
 	}
 
 	for (int i = 0; i + 2 < wideLines.size(); i += 3)
@@ -262,13 +277,15 @@ osg::Group* handleGeometry(MEPElement& element, int id)
 		//osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(184.0 / 255, 213. / 255., 220.0 / 255, 1) }, { id }, g_viewer->getCamera());
 		osg::Geometry* geometry = LineHole::createTriangles(allPTs, { osg::Vec4(element.Color, 1) }, { id }, g_viewer->getCamera());
 		osg::Geode* geode = new osg::Geode;
-		geode->setNodeMask(g_is_daoxian_file ? NM_QIAOJIA_JIDIANSHEBEI : NM_FACE);
+
+		int nodeMask = g_is_daoxian_file ? NM_QIAOJIA_JIDIANSHEBEI : NM_FACE;
+		geode->setNodeMask(nodeMask);
 		geode->addDrawable(geometry);
 		root->addChild(geode);
-		geometry->setNodeMask(g_is_daoxian_file ? NM_QIAOJIA_JIDIANSHEBEI : NM_FACE);
+		geometry->setNodeMask(nodeMask);
 
 		//越小越先画，默认0, 面要最先画,  实体线第二   虚线最后
-		geode->getOrCreateStateSet()->setRenderBinDetails(RenderPriority::FACE, "RenderBin"); //面
+		geode->getOrCreateStateSet()->setRenderBinDetails(isWideLine ? RenderPriority::LINE : RenderPriority::FACE, "RenderBin"); //面
 		LineHole::setUpStateset(geode->getOrCreateStateSet(), g_viewer->getCamera(), false);
 		geode->getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 	}

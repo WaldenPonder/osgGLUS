@@ -144,7 +144,7 @@ bool range_search_this_uv(vec2 uv, float range, int id, vec2 text_size, float de
 	// return false;
 
 	int id2 = texture(idTexture, uv).r;
-	
+
 	//不参与，不能打断别人
 	if(id2 == ID_ELEMENT_DONT_PARTICIPATION) return false;
 
@@ -227,14 +227,27 @@ bool range_search(float range, int id, vec2 text_size, float depth)
 	return false;
 }
 
-bool perpendicular_search(const vec4 lineOrig, const vec2 uv, const int idOrig, const vec2 text_size, const float depth)
+bool perpendicular_search(float stepIndex, const vec4 lineOrig, const vec2 uv, const int idOrig,
+                          const vec2 text_size, const float depth, bool is_hidden_line)
 {
 	vec4 p1 = lineOrig;
 	int id2 = texture(idTexture, uv).r;
-	
+
+	if(is_hidden_line)
+	{
+		if(stepIndex == 1.0 && is_connected(id2, idOrig))
+			return true;
+
+		if(id2 == 0)
+		{
+			baseColor = vec4(0); //虚线走出了三角面
+			return true;
+		}
+	}
+
 	//不参与，不能打断别人
 	if(id2 == ID_ELEMENT_DONT_PARTICIPATION) return false;
-	
+
 	if(id2 > 0 && idOrig != id2 && !is_connected(id2, idOrig)) //连接判断
 	{
 		float val = unpackRgbaToFloat(texture(depthTexture, uv));
@@ -243,7 +256,7 @@ bool perpendicular_search(const vec4 lineOrig, const vec2 uv, const int idOrig, 
 			vec4 p2 = texture(linePtTexture, uv);
 
 			//如果是三角面
-			if(p2 == vec4(0))
+			if(!is_hidden_line && p2 == vec4(0))
 			{
 				baseColor = vec4(0);
 				return true;
@@ -253,7 +266,7 @@ bool perpendicular_search(const vec4 lineOrig, const vec2 uv, const int idOrig, 
 			bool b1 = (p1 != vec4(0)) && (p2 != vec4(0)) && doIntersect(p1.xy, p1.zw, p2.xy, p2.zw);
 			if(b1)
 			{
-				baseColor = vec4(1);
+				baseColor = vec4(0);
 				return true;
 			}
 		}
@@ -284,16 +297,16 @@ bool do_line_break(float range, int id, vec2 text_size, float depth)
 		vec2 uv3 = uv_ + vec2(-dir.y/ text_size.x, dir.x/ text_size.y);
 		vec2 uv4 = uv_ + vec2(dir.y/ text_size.x, -dir.x/ text_size.y);
 
-		if(perpendicular_search(lineOrig, uv1,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv1,  id, text_size, depth, false))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv2,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv2,  id, text_size, depth, false))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv3,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv3,  id, text_size, depth, false))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv4,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv4,  id, text_size, depth, false))
 			return true;
 	}
 	return false;
@@ -314,16 +327,16 @@ bool is_need_break_dot_line(float range, int id, vec2 text_size, float depth)
 		vec2 uv3 = uv_ + vec2(-dir.y/ text_size.x, dir.x/ text_size.y);
 		vec2 uv4 = uv_ + vec2(dir.y/ text_size.x, -dir.x/ text_size.y);
 
-		if(perpendicular_search(lineOrig, uv1,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv1,  id, text_size, depth, true))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv2,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv2,  id, text_size, depth, true))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv3,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv3,  id, text_size, depth, true))
 			return true;
 
-		if(perpendicular_search(lineOrig, uv4,  id, text_size, depth))
+		if(perpendicular_search(i, lineOrig, uv4,  id, text_size, depth, true))
 			return true;
 	}
 
@@ -341,17 +354,12 @@ void main()
 	}
 
 	int id = texture(idTexture, texcoord).r;
-	
-	if(id == ID_ELEMENT_DONT_PARTICIPATION) //不参与，不被别人打断
+
+	//fragColor = vec4(vec3(float(id) / 355.0), 1); return;
+
+	if(id == 0 || id == ID_ELEMENT_DONT_PARTICIPATION) //id 无效，提前返回   不参与，不被别人打断
 	{
 		fragColor = baseColor;
-		return;
-	}
-	
-	if(id == 0)   //id 无效，提前返回
-	{
-		fragColor = baseColor;
-		//fragColor = vec4(1,1,0,1);
 		return;
 	}
 
@@ -360,14 +368,9 @@ void main()
 
 	if(id < 0)  //隐藏线打断
 	{
-		//fragColor =  vec4(1, 0, 0, 1); return;
 		id = -id;
 		float range = int(u_inner_range);
-		if(is_need_break_dot_line(range, id, text_size, depth))
-		{
-			fragColor =  vec4(0);
-			return;
-		}
+		is_need_break_dot_line(range, id, text_size, depth);
 	}
 	else
 	{
@@ -376,6 +379,5 @@ void main()
 	}
 
 	fragColor = baseColor;
-	//fragColor = vec4(1);
 }
 

@@ -46,8 +46,8 @@ bool flag_start = false;
 #include "MyEventHandler.h"
 
 /*
-//三角面分摊查找的逻辑，移植到line hole shader内
-//line hole shader能正常工作
+
+宽线不需要隐藏线
 
 现在在一个圆形区域内
 
